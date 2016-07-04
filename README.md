@@ -81,4 +81,5 @@ I have only one Sality sample to develop Sality killer module. I think there are
 ## Author
 
 [Quang Nguyễn](https://github.com/quangnh89)
+
 Blog: [develbranch.com](https://develbranch.com)
