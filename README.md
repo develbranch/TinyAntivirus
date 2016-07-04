@@ -74,7 +74,7 @@ C:\build>
 
 If you want to contribute, please pick up something from our [Github issues](https://github.com/develbranch/TinyAntivirus/issues).
 
-I also maintain a list of more problems in a [TODO list](https://github.com/develbranch/TinyAntivirus/TODO).
+I also maintain a list of more problems in a [TODO list](https://github.com/develbranch/TinyAntivirus/wiki/TODO).
 
 I have only one Sality sample to develop Sality killer module. I think there are many variant types of this file infector. Please send me samples which TinyAv can not detect or other kinds of polymorphic viruses. Thank you.
 
