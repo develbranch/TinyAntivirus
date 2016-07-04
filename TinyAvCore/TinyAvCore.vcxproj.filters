@@ -1,0 +1,210 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\FileSystem">
+      <UniqueIdentifier>{05de0bfa-a52e-4b61-8964-1dcf31b541fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\FileSystem">
+      <UniqueIdentifier>{714d22ee-b7e6-42ca-9ee3-f8b0400b0316}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\FileSystem\zip">
+      <UniqueIdentifier>{7982db47-8a71-456f-900a-00bf82ca215d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\FileSystem\zip">
+      <UniqueIdentifier>{808377b8-44b8-41f6-8fa2-deb7c3e0f4e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\FileType">
+      <UniqueIdentifier>{aa2d6fe5-915c-4311-962c-de410e0d8ea0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\FileType">
+      <UniqueIdentifier>{21a42af8-d5ee-4fdf-b882-7c094c2573e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Scanner">
+      <UniqueIdentifier>{b5431c20-bc66-4451-a958-488b46482dad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Emulator">
+      <UniqueIdentifier>{35f34e88-22ed-4cd1-aeb2-8bfadeebc284}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Emulator">
+      <UniqueIdentifier>{4beaa95b-fbc2-478a-924b-a8145ec00819}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Module">
+      <UniqueIdentifier>{9838e715-dd7a-4540-a887-4808cc101828}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Module">
+      <UniqueIdentifier>{44409023-71b1-4745-b36a-2183e9b580bf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\RefCount.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\TinyAvBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\TinyAvCore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Emulator\Emulator.h">
+      <Filter>Header Files\Emulator</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsAttribute.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsEnum.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsEnumContext.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsEnumObserver.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsStream.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileType\FileType.h">
+      <Filter>Header Files\FileType</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileType\PEFile.h">
+      <Filter>Header Files\FileType</Filter>
+    </ClInclude>
+    <ClInclude Include="Emulator\PeEmulator.h">
+      <Filter>Header Files\Emulator</Filter>
+    </ClInclude>
+    <ClInclude Include="Emulator\unicorn_dynload.h">
+      <Filter>Header Files\Emulator</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\zip\UnzipHelper.h">
+      <Filter>Header Files\FileSystem\zip</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\zip\ZipFs.h">
+      <Filter>Header Files\FileSystem\zip</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\zip\ZipFsAttribute.h">
+      <Filter>Header Files\FileSystem\zip</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\zip\ZipFsEnum.h">
+      <Filter>Header Files\FileSystem\zip</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\BufferedStream.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\FileFs.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\FileFsAttribute.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\FileFsEnum.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\FileFsEnumContext.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem\FileFsStream.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Module\Module.h">
+      <Filter>Header Files\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Module\ModuleManager.h">
+      <Filter>Header Files\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Scanner\ScanContext.h">
+      <Filter>Header Files\Scanner</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Scanner\ScanModule.h">
+      <Filter>Header Files\Scanner</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Scanner\Scanner.h">
+      <Filter>Header Files\Scanner</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Scanner\ScanObserver.h">
+      <Filter>Header Files\Scanner</Filter>
+    </ClInclude>
+    <ClInclude Include="FileType\PeFileParser.h">
+      <Filter>Header Files\FileType</Filter>
+    </ClInclude>
+    <ClInclude Include="Module\ModuleMgrService.h">
+      <Filter>Header Files\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Scanner\ScanService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\FileSystem\FsObject.h">
+      <Filter>Header Files\FileSystem</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Emulator\PeEmulator.cpp">
+      <Filter>Source Files\Emulator</Filter>
+    </ClCompile>
+    <ClCompile Include="Emulator\unicorn_dynload.c">
+      <Filter>Source Files\Emulator</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\zip\UnzipHelper.cpp">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\zip\ZipFs.cpp">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\zip\ZipFsAttribute.cpp">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\zip\ZipFsEnum.cpp">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\FileFs.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\FileFsAttribute.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\FileFsEnum.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\FileFsEnumContext.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\FileFsStream.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem\BufferedStream.cpp">
+      <Filter>Source Files\FileSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="FileType\PeFileParser.cpp">
+      <Filter>Source Files\FileType</Filter>
+    </ClCompile>
+    <ClCompile Include="Module\ModuleMgrService.cpp">
+      <Filter>Source Files\Module</Filter>
+    </ClCompile>
+    <ClCompile Include="Scanner\ScanService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\include\zlib\ioapi.c">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\include\zlib\unzip.c">
+      <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
