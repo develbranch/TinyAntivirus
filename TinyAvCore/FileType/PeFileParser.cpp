@@ -22,33 +22,42 @@ HRESULT WINAPI CPeFileParser::QueryInterface(
 {
 	if (ppvObject == NULL) return E_INVALIDARG;
 	if (IsEqualIID(riid, IID_IUnknown) ||
+		IsEqualIID(riid, __uuidof(IFileType)) ||
 		IsEqualIID(riid, __uuidof(IPeFile)))
 	{
 		*ppvObject = static_cast<IPeFile*>(this);
-		AddRef();
+		this->AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, __uuidof(IFsStream)))
 	{
-		if (m_stream == NULL)
+		if (m_stream)
 		{
-			return E_NOT_SET;
+			*ppvObject = static_cast<IFsStream*>(m_stream);
+			m_stream->AddRef();
+			return S_OK;
 		}
-		*ppvObject = static_cast<IFsStream*>(m_stream);
-		m_stream->AddRef();
-		return S_OK;
+	}
+	else if (IsEqualIID(riid, __uuidof(IVirtualFs)))
+	{
+		if (m_file)
+		{
+			*ppvObject = static_cast<IVirtualFs*>(m_file);
+			m_file->AddRef();
+			return S_OK;
+		}
 	}
 	return E_NOINTERFACE;
 }
 
-HRESULT WINAPI CPeFileParser::GetDosHeader(__out IMAGE_DOS_HEADER *dosHeader)
+HRESULT WINAPI CPeFileParser::GetDosHeader(__out_bcount(sizeof(IMAGE_DOS_HEADER)) IMAGE_DOS_HEADER *dosHeader)
 {
 	if (dosHeader == NULL) return E_INVALIDARG;
 	*dosHeader = m_dosHeader;
 	return S_OK;
 }
 
-HRESULT WINAPI CPeFileParser::GetPEHeader(__out IMAGE_NT_HEADERS32 *peHeader)
+HRESULT WINAPI CPeFileParser::GetPEHeader(__out_bcount(sizeof(IMAGE_NT_HEADERS32)) IMAGE_NT_HEADERS32 *peHeader)
 {
 	if (peHeader == NULL) return E_INVALIDARG;
 	*peHeader = m_peHeader;
@@ -57,12 +66,12 @@ HRESULT WINAPI CPeFileParser::GetPEHeader(__out IMAGE_NT_HEADERS32 *peHeader)
 
 HRESULT WINAPI CPeFileParser::GetSectionHeader(
 	__in UINT sectionIndex,
-	__out IMAGE_SECTION_HEADER *sectionHeader)
+	__out_bcount(IMAGE_SIZEOF_SECTION_HEADER) IMAGE_SECTION_HEADER *sectionHeader)
 {
 	if (sectionHeader == NULL) return E_INVALIDARG;
 	if (sectionIndex >= m_SectionCount) return E_NOT_SET;
 
-	memcpy(sectionHeader, &m_SectionTable[sectionIndex], sizeof(IMAGE_SECTION_HEADER));
+	memcpy(sectionHeader, &m_SectionTable[sectionIndex], IMAGE_SIZEOF_SECTION_HEADER);
 	return S_OK;
 }
 
@@ -199,19 +208,15 @@ HRESULT WINAPI CPeFileParser::ReadEntryPointData(
 	HRESULT hr = RvaToFileOffset(m_peHeader.OptionalHeader.AddressOfEntryPoint, &epFileOffset);
 	if (FAILED(hr)) return hr;
 
-	ULARGE_INTEGER pos;
-	LARGE_INTEGER distanceToMove = {};
-	distanceToMove.LowPart = epFileOffset;
-	hr = m_stream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin);
-	if (FAILED(hr)) return hr;
-	return m_stream->Read(buffer, maxReadSize, bytesRead);
+	LARGE_INTEGER offset = {};
+	offset.LowPart = epFileOffset;
+	return m_stream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, maxReadSize, bytesRead);
 }
 
 HRESULT WINAPI CPeFileParser::CheckType(__in IVirtualFs* fsFile, __out BOOL *typeMatched)
 {
 	if (fsFile == NULL || typeMatched == NULL) return E_INVALIDARG;
 
-	IFsStream *fileStream = NULL;
 	HRESULT hr;
 	BOOL    fileOpened = FALSE;
 
@@ -236,29 +241,18 @@ HRESULT WINAPI CPeFileParser::CheckType(__in IVirtualFs* fsFile, __out BOOL *typ
 		if (FAILED(hr)) return hr;
 	}
 
-	if (FAILED(fsFile->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fileStream)))
-	{
-		if (!fileOpened) fsFile->Close();
-		return E_NOT_VALID_STATE;
-	}
-
 	// Parse headers
-	if (!ParsePEHeader(fileStream))
+	if (!ParsePEHeader(fsFile))
 	{
 		m_typeMatched = FALSE;
 		*typeMatched = m_typeMatched;
-		fileStream->Release();
 		if (!fileOpened) fsFile->Close();
 		return S_OK;
 	}
 
-	// Parse other PE parts
-	InitSectionTable(fileStream);
-
 	fsFile->QueryInterface(__uuidof(IFsStream), (LPVOID*)&m_stream);
 	fsFile->QueryInterface(__uuidof(IVirtualFs), (LPVOID*)&m_file);
 
-	fileStream->Release();
 	m_typeMatched = TRUE;
 	*typeMatched = m_typeMatched;
 	return S_OK;
@@ -298,8 +292,8 @@ HRESULT WINAPI CPeFileParser::Truncate(__in UINT va, __in_opt BOOL padding /*= F
 
 		if ((padding == FALSE) && ((ULONGLONG)(m_SectionTable[m_SectionCount - 1].PointerToRawData + m_SectionTable[m_SectionCount - 1].SizeOfRawData) == fileSize.QuadPart))
 		{
-			DWORD diffVirtualSize = Align(m_SectionTable[vrSection].VirtualAddress + m_SectionTable[vrSection].Misc.VirtualSize, m_peHeader.OptionalHeader.SectionAlignment) - Align(rva, m_peHeader.OptionalHeader.SectionAlignment);
-			DWORD diffSizeOfRawData = Align(m_SectionTable[vrSection].PointerToRawData + m_SectionTable[vrSection].SizeOfRawData, m_peHeader.OptionalHeader.FileAlignment) - Align(offset, m_peHeader.OptionalHeader.FileAlignment);
+			DWORD diffVirtualSize = SectionAlign(m_SectionTable[vrSection].VirtualAddress + m_SectionTable[vrSection].Misc.VirtualSize, m_peHeader.OptionalHeader.SectionAlignment) - SectionAlign(rva, m_peHeader.OptionalHeader.SectionAlignment);
+			DWORD diffSizeOfRawData = SectionAlign(m_SectionTable[vrSection].PointerToRawData + m_SectionTable[vrSection].SizeOfRawData, m_peHeader.OptionalHeader.FileAlignment) - SectionAlign(offset, m_peHeader.OptionalHeader.FileAlignment);
 			m_peHeader.OptionalHeader.SizeOfImage -= diffVirtualSize;
 			if (TEST_FLAG(m_SectionTable[vrSection].Characteristics, IMAGE_SCN_MEM_EXECUTE))
 				m_peHeader.OptionalHeader.SizeOfCode -= diffVirtualSize;
@@ -320,7 +314,7 @@ HRESULT WINAPI CPeFileParser::Truncate(__in UINT va, __in_opt BOOL padding /*= F
 		else
 		{
 			//padding
-			DWORD diffSizeOfRawData = Align(m_SectionTable[vrSection].PointerToRawData + m_SectionTable[vrSection].SizeOfRawData, m_peHeader.OptionalHeader.FileAlignment) - Align(offset, m_peHeader.OptionalHeader.FileAlignment);
+			DWORD diffSizeOfRawData = SectionAlign(m_SectionTable[vrSection].PointerToRawData + m_SectionTable[vrSection].SizeOfRawData, m_peHeader.OptionalHeader.FileAlignment) - SectionAlign(offset, m_peHeader.OptionalHeader.FileAlignment);
 			LARGE_INTEGER distanceToMove = {};
 			distanceToMove.QuadPart = offset;
 			unsigned char tmp[1024];
@@ -341,97 +335,157 @@ HRESULT WINAPI CPeFileParser::Truncate(__in UINT va, __in_opt BOOL padding /*= F
 	return E_NOT_VALID_STATE;
 }
 
-bool CPeFileParser::ValidatePeHeader(void)
+bool CPeFileParser::ParsePEHeader(__in IVirtualFs* fsFile)
 {
-	if (m_peHeader.Signature != IMAGE_NT_SIGNATURE)  return false;
-	//FileHeader
-	if (m_peHeader.FileHeader.Machine != IMAGE_FILE_MACHINE_I386) return false;
-	if (m_peHeader.FileHeader.NumberOfSections > MAX_SECTION_COUNT) return false;
-	if (m_peHeader.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER32)) return false;
-	// OptionalHeader
-	if (m_peHeader.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC) return false;
-
-	return true;
-}
-
-bool CPeFileParser::ParsePEHeader(__in IFsStream *fsStream)
-{
-	if (fsStream == NULL) return false;
-
+	HRESULT hr;
+	ULARGE_INTEGER fileSize = {};
+	IFsAttribute * attribute = NULL;
 	ULARGE_INTEGER	pos = { 0, 0 };
-	LARGE_INTEGER   distanceToMove = { 0, 0 };
+	LARGE_INTEGER   offset = { 0, 0 };
 	ULONG			readSize;
+	IFsStream*		fsStream = NULL;
+
+	if (fsFile == NULL) return false;
+
+	// get file size
+	if (FAILED(fsFile->QueryInterface(__uuidof(IFsAttribute), (LPVOID*)&attribute)))
+		return false;
+	hr = attribute->Size(&fileSize);
+	attribute->Release();
+	if (FAILED(hr)) return false;
+
+	// get file stream
+	if (FAILED(fsFile->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fsStream)))
+		return false;
 
 	// Parse DOS header
-	if (FAILED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin)) ||
-		FAILED(fsStream->Read(&m_dosHeader, sizeof(IMAGE_DOS_HEADER), &readSize)) ||
+	if (FAILED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, &m_dosHeader, sizeof(IMAGE_DOS_HEADER), &readSize)) ||
 		readSize != sizeof(IMAGE_DOS_HEADER) ||
-		m_dosHeader.e_magic != IMAGE_DOS_SIGNATURE)
+		m_dosHeader.e_magic != IMAGE_DOS_SIGNATURE ||
+		m_dosHeader.e_lfanew <= 0 || //malformed DOS header
+		((ULONGLONG)m_dosHeader.e_lfanew + sizeof(IMAGE_NT_HEADERS32)) >= fileSize.QuadPart
+		)
 	{
 		ZeroMemory(&m_dosHeader, sizeof(m_dosHeader));
+		fsStream->Release();
 		return false;
 	}
 
 	// Parse PE header
-	distanceToMove.LowPart = m_lfanew = m_dosHeader.e_lfanew;
-	distanceToMove.HighPart = 0;
-	if (FAILED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin)) ||
-		FAILED(fsStream->Read(&m_peHeader, sizeof(IMAGE_NT_HEADERS32), &readSize)) ||
-		readSize != sizeof(IMAGE_NT_HEADERS32) ||
-		!ValidatePeHeader())
+	offset.LowPart = m_lfanew = m_dosHeader.e_lfanew;
+	offset.HighPart = 0;
+	if (FAILED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, &m_peHeader, sizeof(IMAGE_NT_HEADERS32), &readSize)) ||
+		readSize != sizeof(IMAGE_NT_HEADERS32))
 	{
 		ZeroMemory(&m_peHeader, sizeof(m_peHeader));
+		fsStream->Release();
 		return false;
 	}
 
-	return true;
+	// check for malformed PE header
+	bool res = ValidatePeHeader(fsStream);
+	if (!res)
+	{
+		ZeroMemory(&m_peHeader, sizeof(m_peHeader));
+	}
+
+	fsStream->Release();
+	return res;
 }
 
-void CPeFileParser::InitSectionTable(__in IFsStream *fsStream)
+bool CPeFileParser::ValidatePeHeader(__in IFsStream *fsStream)
 {
-	if (fsStream == NULL) return;
+	if (m_peHeader.Signature != IMAGE_NT_SIGNATURE)  return false;
+	//FileHeader
+	if (m_peHeader.FileHeader.Machine != IMAGE_FILE_MACHINE_I386 ) return false;
+	/*
+	Quote from PECOFF documentation: "Note that the Windows loader limits the number of sections to 96."
+	From Windows Vista, the range from zero to the maximum value 0xFFFF.*/
+
+	if (m_peHeader.FileHeader.NumberOfSections == 0 || m_peHeader.FileHeader.NumberOfSections > MAX_SECTION_COUNT) return false;
+	if (m_peHeader.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER32)) return false;
+	// OptionalHeader
+	if (m_peHeader.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC) return false;
+	if (m_peHeader.OptionalHeader.FileAlignment == 0) return false;
+	if (m_peHeader.OptionalHeader.SectionAlignment == 0) return false;
+
+	// check section alignment
+	if ((m_peHeader.OptionalHeader.SectionAlignment & (m_peHeader.OptionalHeader.SectionAlignment - 1)) != 0)
+		return false;
+
+	// check file alignment
+	if ((m_peHeader.OptionalHeader.FileAlignment & (m_peHeader.OptionalHeader.FileAlignment - 1)) != 0)
+		return false;
+
+	if (m_peHeader.OptionalHeader.SectionAlignment < m_peHeader.OptionalHeader.FileAlignment) return false;
+	if (m_peHeader.OptionalHeader.SectionAlignment % m_peHeader.OptionalHeader.FileAlignment) return false;
+	if (m_peHeader.OptionalHeader.SizeOfImage == 0) return false;
+	if (m_peHeader.OptionalHeader.SizeOfImage % m_peHeader.OptionalHeader.SectionAlignment) return false;
+	if (m_peHeader.OptionalHeader.ImageBase == 0 && m_peHeader.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress == 0) return false;
+	
+	if (
+		(!TEST_FLAG(m_peHeader.FileHeader.Characteristics, IMAGE_FILE_LARGE_ADDRESS_AWARE))&& 
+				(m_peHeader.OptionalHeader.ImageBase && m_peHeader.OptionalHeader.ImageBase + m_peHeader.OptionalHeader.SizeOfImage >=0x80000000 )
+		)
+		return false;
+
+	if (
+		(TEST_FLAG(m_peHeader.FileHeader.Characteristics, IMAGE_FILE_LARGE_ADDRESS_AWARE)) &&
+		(m_peHeader.OptionalHeader.ImageBase && m_peHeader.OptionalHeader.ImageBase + m_peHeader.OptionalHeader.SizeOfImage >= 0xC0000000)
+		)
+		return false;
+
+	if (m_peHeader.OptionalHeader.SizeOfStackCommit == 0 || m_peHeader.OptionalHeader.SizeOfStackReserve == 0) return false;
+
+	// Parse other PE parts
+	return InitSectionTable(fsStream);
+}
+
+bool CPeFileParser::InitSectionTable(__in IFsStream *fsStream)
+{
+	if (fsStream == NULL) return false;
 
 	// Seek to the beginning of the section table
 	ULARGE_INTEGER	pos = { 0, 0 };
-	LARGE_INTEGER   distanceToMove = { 0, 0 };
+	LARGE_INTEGER   offset = { 0, 0 };
 	ULONG			bufSize, readSize;
 	ULONG			maxSectionCnt;
 	BYTE			*section;
 
-	distanceToMove.LowPart = m_dosHeader.e_lfanew +
+	offset.LowPart = m_dosHeader.e_lfanew +
 		FIELD_OFFSET(IMAGE_NT_HEADERS32, OptionalHeader) +
 		m_peHeader.FileHeader.SizeOfOptionalHeader;
-
-	if (FAILED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin))) return;
 
 	// Allocate buffer for section table
 	maxSectionCnt = m_peHeader.FileHeader.NumberOfSections;
 	if (maxSectionCnt > MAX_SECTION_COUNT) maxSectionCnt = MAX_SECTION_COUNT;
 	bufSize = IMAGE_SIZEOF_SECTION_HEADER * maxSectionCnt;
 	section = new BYTE[bufSize];
-	if (section == NULL) return;
+	if (section == NULL) return false;
 	ZeroMemory(section, bufSize);
 
 	// Try to read a whole section table
-	if (FAILED(fsStream->Read(section, bufSize, &readSize)))
+	if (FAILED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, section, bufSize, &readSize)))
 	{
 		delete[] section;
-		return;
+		return false;
 	}
 
-	ParseSectionTable(section, maxSectionCnt);
+	bool res = ParseSectionTable(section, maxSectionCnt);
 	delete[] section;
+	return res;
 }
 
-void CPeFileParser::ParseSectionTable(__in const BYTE *sectionData, __in ULONG maxSectionCount)
+bool CPeFileParser::ParseSectionTable(__in const BYTE *sectionData, __in ULONG maxSectionCount)
 {
 	UINT	cnt = 0;
 	BYTE	*buffer;
 	ULONG	bufferSize;
 	IMAGE_SECTION_HEADER	nullHeader = {};
+	ULONG TotalVirtualSize = 0;
 
 	// Find the correct section count
-	if (sectionData == NULL) return;
+	if (sectionData == NULL)  return false;
 	while (cnt < maxSectionCount)
 	{
 		if (memcmp(&nullHeader,
@@ -441,19 +495,23 @@ void CPeFileParser::ParseSectionTable(__in const BYTE *sectionData, __in ULONG m
 			// Null section
 			break;
 		}
+		IMAGE_SECTION_HEADER* section = (IMAGE_SECTION_HEADER*)(sectionData + cnt * IMAGE_SIZEOF_SECTION_HEADER);
+		TotalVirtualSize = SectionAlign(section->Misc.VirtualSize, m_peHeader.OptionalHeader.SectionAlignment) + section->VirtualAddress ;
 		cnt++;
 	}
-	if (cnt == 0) return;
+	if (cnt == 0)  return false;
+	if (TotalVirtualSize != m_peHeader.OptionalHeader.SizeOfImage) return false;
 
 	// Allocate buffer to store the section table data
 	bufferSize = cnt * IMAGE_SIZEOF_SECTION_HEADER;
 	buffer = new BYTE[bufferSize];
-	if (buffer == NULL) return;
+	if (buffer == NULL)  return false;
 
 	// Copy section table data
 	m_SectionTable = (IMAGE_SECTION_HEADER*)buffer;
 	memcpy(m_SectionTable, sectionData, bufferSize);
 	m_OriginalSectionCount = m_SectionCount = cnt;
+	return true;
 }
 
 void WINAPI CPeFileParser::ReleaseCurrentFile(void)
@@ -478,26 +536,31 @@ void WINAPI CPeFileParser::ReleaseCurrentFile(void)
 	}
 }
 
-DWORD CPeFileParser::Align(__in DWORD n, __in DWORD a)
+DWORD CPeFileParser::SectionAlign(__in DWORD n, __in DWORD a)
 {
-	return (n / a + ((n % a) ? 1 : 0)) * a;
+	//return (n / a + ((n % a) ? 1 : 0)) * a;
+	return (n + (a - 1)) & ~(a - 1);
+}
+
+DWORD CPeFileParser::FileAlign(__in DWORD n, __in DWORD a)
+{
+	return n & ~(a - 1);
 }
 
 HRESULT CPeFileParser::FlushPeHeader(void)
 {
 	HRESULT hr;
-	LARGE_INTEGER distanceToMove;
+	LARGE_INTEGER fileOffset;
 	ULONG writtenSize;
 
-	distanceToMove.QuadPart = m_lfanew;
-	if (FAILED(hr = m_stream->Seek(NULL, distanceToMove, IFsStream::FsStreamBegin)) ||
-		FAILED(hr = m_stream->Write(&m_peHeader, sizeof(IMAGE_NT_HEADERS32), &writtenSize)) ||
+	fileOffset.QuadPart = m_lfanew;
+	if (FAILED(hr = m_stream->WriteAt(fileOffset, IFsStream::FsStreamBegin, &m_peHeader, sizeof(IMAGE_NT_HEADERS32), &writtenSize)) ||
 		writtenSize != sizeof(IMAGE_NT_HEADERS32))
 	{
 		if (FAILED(hr)) return hr;
 		return E_FAIL;
 	}
-	hr = m_stream->Write(m_SectionTable, IMAGE_SIZEOF_SECTION_HEADER * m_OriginalSectionCount, &writtenSize);
+	hr = m_stream->Write((LPBYTE)m_SectionTable, IMAGE_SIZEOF_SECTION_HEADER * m_OriginalSectionCount, &writtenSize);
 	if (writtenSize != IMAGE_SIZEOF_SECTION_HEADER * m_OriginalSectionCount)
 		return E_FAIL;
 	return hr;
@@ -512,23 +575,25 @@ HRESULT WINAPI CPeFileParser::SetVaToEntryPoint(__in UINT va)
 HRESULT WINAPI CPeFileParser::SetRvaToEntryPoint(__in UINT rva)
 {
 	HRESULT hr;
-	LARGE_INTEGER distanceToMove;
+	LARGE_INTEGER headerOffset;
 	ULONG writtenSize;
 	ULARGE_INTEGER pos;
-	distanceToMove.QuadPart = m_lfanew;
-	hr = m_stream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin);
-	if (FAILED(hr))return hr;
+	headerOffset.QuadPart = m_lfanew;
+
 	m_peHeader.OptionalHeader.AddressOfEntryPoint = rva;
+	hr = m_stream->Seek(&pos, headerOffset, IFsStream::FsStreamBegin);
+	if (FAILED(hr)) return hr;
+
 	if (FAILED(hr = m_stream->Write(&m_peHeader, sizeof(IMAGE_NT_HEADERS32), &writtenSize)) ||
 		writtenSize != sizeof(IMAGE_NT_HEADERS32))
 	{
-		distanceToMove.QuadPart = (LONGLONG)pos.QuadPart;
-		m_stream->Seek(NULL, distanceToMove, IFsStream::FsStreamBegin);
+		headerOffset.QuadPart = (LONGLONG)pos.QuadPart;
+		m_stream->Seek(NULL, headerOffset, IFsStream::FsStreamBegin);
 		if (FAILED(hr)) return hr;
 		return E_FAIL;
 	}
-	distanceToMove.QuadPart = (LONGLONG)pos.QuadPart;
-	m_stream->Seek(NULL, distanceToMove, IFsStream::FsStreamBegin);
+	headerOffset.QuadPart = (LONGLONG)pos.QuadPart;
+	m_stream->Seek(NULL, headerOffset, IFsStream::FsStreamBegin);
 	return hr;
 }
 

@@ -1,4 +1,5 @@
 #include "PeEmulator.h"
+#include "..\FileType\PeFileParser.h"
 
 CPeEmulator::CPeEmulator()
 {
@@ -66,7 +67,7 @@ HRESULT WINAPI CPeEmulator::QueryInterface(__in REFIID riid, __out _COM_Outptr_ 
 		IsEqualIID(riid, __uuidof(IEmulator)))
 	{
 		*ppvObject = static_cast<IEmulator*>(this);
-		this->AddRef();
+		AddRef();
 		return S_OK;
 	}
 
@@ -171,7 +172,7 @@ HRESULT WINAPI CPeEmulator::EmulateCode(
 			err = uc_emu_start(m_engine, addressToStart, 0, 0, 0);
 		else
 			err = uc_emu_start(m_engine, addressToStart, addressToStart + nNumberOfBytesToEmulate - 1, 0, 0);
-	
+
 		OnStopped();
 		uc_close(m_engine);
 		m_engine = NULL;
@@ -206,119 +207,221 @@ HRESULT WINAPI CPeEmulator::EmulatePeFile(__in IPeFile *peFile, __in DWORD_PTR r
 	IMAGE_NT_HEADERS32 ntHeader;
 	IFsStream * fileStream = NULL;
 	ULONG readSize = 0;
-	ULARGE_INTEGER pos;
-	LARGE_INTEGER distanceToMove = {};
+	LARGE_INTEGER fileOffset = {};
+	ULARGE_INTEGER fileSize = {};
+	HRESULT hr;
+	IVirtualFs *fs;
+	IFsAttribute * attrib;
+	if (peFile == NULL) return E_INVALIDARG;
 
-	HRESULT hr = peFile->GetPEHeader(&ntHeader);
-	if (FAILED(hr)) return hr;
-
-	BYTE *memPe = new BYTE[ntHeader.OptionalHeader.SizeOfImage];
-	if (memPe == NULL)
+	if (m_bEmulatorEngineReady == false)
 	{
-		return E_OUTOFMEMORY;
+		OnError(IEmulObserver::EmulatorIsNotFound);
+		return E_NOT_VALID_STATE;
 	}
-
-	ZeroMemory(memPe, ntHeader.OptionalHeader.SizeOfImage);
-
-	hr = peFile->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fileStream);
-	if (FAILED(hr))
+	try
 	{
-		delete[] memPe;
-		return hr;
-	}
-
-	hr = fileStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin);
-	if (FAILED(hr))
-	{
-		fileStream->Release();
-		delete[] memPe;
-		return hr;
-	}
-
-	hr = peFile->GetSectionHeader(0, &section);
-	if (FAILED(hr))
-	{
-		fileStream->Release();
-		delete[] memPe;
-		return hr;
-	}
-
-	hr = fileStream->Read(memPe, section.PointerToRawData, &readSize);
-	if (FAILED(hr) || readSize != section.PointerToRawData)
-	{
-		fileStream->Release();
-		delete[] memPe;
+		hr = peFile->QueryInterface(__uuidof(IVirtualFs), (LPVOID*)&fs);
 		if (FAILED(hr)) return hr;
-		return E_FAIL;
-	}
-
-	for (UINT i = 0; i < peFile->GetSectionCount(); ++i)
-	{
-		hr = peFile->GetSectionHeader(i, &section);
+		hr = fs->QueryInterface(__uuidof(IFsAttribute), (LPVOID*)&attrib);
 		if (FAILED(hr))
 		{
-			fileStream->Release();
-			delete[] memPe;
+			fs->Release();
 			return hr;
 		}
+		hr = attrib->Size(&fileSize);
+		attrib->Release();
+		fs->Release();
+		if (FAILED(hr)) return hr;
 
-		if (section.SizeOfRawData == 0)
-			continue;
+		hr = peFile->GetPEHeader(&ntHeader);
+		if (FAILED(hr)) return hr;
 
-		distanceToMove.QuadPart = (LONGLONG)section.PointerToRawData;
-		hr = fileStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin);
-		if (FAILED(hr))
-		{
+		hr = peFile->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fileStream);
+		if (FAILED(hr)) return hr;
+
+		uc_err err = uc_open(UC_ARCH_X86, UC_MODE_32, &m_engine);
+		if (err != UC_ERR_OK) {
+			OnError(IEmulObserver::EmulatorIsNotRunable);
 			fileStream->Release();
-			delete[] memPe;
-			return hr;
-		}
-
-		hr = fileStream->Read(memPe + section.VirtualAddress, section.SizeOfRawData, &readSize);
-		if (FAILED(hr) || readSize != section.SizeOfRawData)
-		{
-			fileStream->Release();
-			delete[] memPe;
-			if (FAILED(hr)) return hr;
 			return E_FAIL;
 		}
-	}
 
-	uint64_t begin = 0;
-	switch (origin)
-	{
-	case  FromEntryPoint:
-		begin = ntHeader.OptionalHeader.ImageBase + ntHeader.OptionalHeader.AddressOfEntryPoint + rvaToStart;
-		break;
-	case FromImageBase:
-		begin = ntHeader.OptionalHeader.ImageBase + rvaToStart;
-		break;
-	default:
-		begin = ntHeader.OptionalHeader.ImageBase + ntHeader.OptionalHeader.AddressOfEntryPoint;
-	}
-
-	if (nNumberOfBytesToEmulate == 0)
-	{
-		IMAGE_SECTION_HEADER sectionHeader;
-		UINT sectionIndex;
-		if (SUCCEEDED(peFile->FindSectionByVa((UINT)begin, &sectionIndex)))
+		if (FAILED(hr = OnStarting()))
 		{
-			if (SUCCEEDED(peFile->GetSectionHeader(sectionIndex, &sectionHeader)))
+			uc_close(m_engine);
+			m_engine = NULL;
+			fileStream->Release();
+			return hr;
+		}
+
+		// map memory for this emulation
+		err = uc_mem_map(m_engine, ntHeader.OptionalHeader.ImageBase, ntHeader.OptionalHeader.SizeOfImage, UC_PROT_ALL);
+		if (err != UC_ERR_OK)
+		{
+			hr = E_FAIL;
+			goto Exit;
+		}
+
+		err = uc_mem_map(m_engine, ntHeader.OptionalHeader.ImageBase - ntHeader.OptionalHeader.SizeOfStackReserve, ntHeader.OptionalHeader.SizeOfStackCommit, UC_PROT_READ | UC_PROT_WRITE);
+		if (err != UC_ERR_OK)
+		{
+			hr = E_FAIL;
+			goto Exit;
+		}
+
+		DWORD r_esp = (DWORD)ntHeader.OptionalHeader.ImageBase - ntHeader.OptionalHeader.SizeOfStackReserve + ntHeader.OptionalHeader.SizeOfStackCommit;
+		err = uc_reg_write(m_engine, UC_X86_REG_ESP, &r_esp);
+		if (err != UC_ERR_OK)
+		{
+			hr = E_FAIL;
+			goto Exit;
+		}
+
+		hr = peFile->GetSectionHeader(0, &section);
+		if (FAILED(hr))
+		{
+			goto Exit;
+		}
+		if (section.PointerToRawData > MAX_PE_HEADER_SIZE ||
+			(ULONGLONG)section.PointerToRawData > fileSize.QuadPart)
+		{
+			hr = E_FAIL;
+			goto Exit;
+		}
+
+		BYTE *tmp = new BYTE[section.PointerToRawData];
+		if (tmp == NULL)
+		{
+			hr = E_OUTOFMEMORY;
+			goto Exit;
+		}
+
+		fileOffset.QuadPart = 0;
+		hr = fileStream->ReadAt(fileOffset, IFsStream::FsStreamBegin, tmp, section.PointerToRawData, &readSize);
+		if (FAILED(hr) || readSize != section.PointerToRawData)
+		{
+			delete[] tmp;
+			if (SUCCEEDED(hr)) hr = E_FAIL;
+			goto Exit;
+		}
+		err = uc_mem_write(m_engine, ntHeader.OptionalHeader.ImageBase, tmp, readSize);
+		if (err != UC_ERR_OK)
+		{
+			delete[] tmp;
+			hr = E_FAIL;
+			goto Exit;
+		}
+
+		delete[] tmp;
+		tmp = NULL;
+
+		for (UINT i = 0; i < peFile->GetSectionCount(); ++i)
+		{
+			hr = peFile->GetSectionHeader(i, &section);
+			if (FAILED(hr))
 			{
-				nNumberOfBytesToEmulate = ntHeader.OptionalHeader.ImageBase + sectionHeader.VirtualAddress + sectionHeader.Misc.VirtualSize - (UINT)begin;
+				hr = E_FAIL;
+				goto Exit;
+			}
+
+			if (section.SizeOfRawData == 0)
+				continue;
+			if (section.SizeOfRawData > fileSize.QuadPart)
+				break;
+
+			tmp = new BYTE[section.SizeOfRawData];
+			if (tmp == NULL) break;
+
+			fileOffset.QuadPart = (LONGLONG)section.PointerToRawData;
+
+			hr = fileStream->ReadAt(fileOffset, IFsStream::FsStreamBegin, tmp, section.SizeOfRawData, &readSize);
+			if (FAILED(hr) || readSize != section.SizeOfRawData)
+			{
+				delete[] tmp;
+				if (SUCCEEDED(hr)) hr = E_FAIL;
+				goto Exit;
+			}
+			err = uc_mem_write(m_engine, ntHeader.OptionalHeader.ImageBase + section.VirtualAddress, tmp, readSize);
+			if (err != UC_ERR_OK)
+			{
+				delete[] tmp;
+				hr = E_FAIL;
+				goto Exit;
+			}
+			delete[] tmp;
+			tmp = NULL;
+
+			uint32_t perms = 0;
+			perms |= TEST_FLAG(section.Characteristics, IMAGE_SCN_MEM_EXECUTE) ? UC_PROT_EXEC  : 0;
+			perms |= TEST_FLAG(section.Characteristics, IMAGE_SCN_MEM_READ)    ? UC_PROT_READ  : 0;
+			perms |= TEST_FLAG(section.Characteristics, IMAGE_SCN_MEM_WRITE)   ? UC_PROT_WRITE : 0;
+			err = uc_mem_protect(m_engine, ntHeader.OptionalHeader.ImageBase + section.VirtualAddress, CPeFileParser::SectionAlign(section.Misc.VirtualSize, ntHeader.OptionalHeader.SectionAlignment), perms);
+			if (err != UC_ERR_OK)
+			{
+				hr = E_FAIL;
+				goto Exit;
 			}
 		}
+
+		uint64_t begin = 0;
+		switch (origin)
+		{
+		case  FromEntryPoint:
+			begin = ntHeader.OptionalHeader.ImageBase + ntHeader.OptionalHeader.AddressOfEntryPoint + rvaToStart;
+			break;
+		case FromImageBase:
+			begin = ntHeader.OptionalHeader.ImageBase + rvaToStart;
+			break;
+		default:
+			begin = ntHeader.OptionalHeader.ImageBase + ntHeader.OptionalHeader.AddressOfEntryPoint;
+		}
+
+		if (nNumberOfBytesToEmulate == 0)
+		{
+			IMAGE_SECTION_HEADER sectionHeader;
+			UINT sectionIndex;
+			if (SUCCEEDED(peFile->FindSectionByVa((UINT)begin, &sectionIndex)))
+			{
+				if (SUCCEEDED(peFile->GetSectionHeader(sectionIndex, &sectionHeader)))
+				{
+					nNumberOfBytesToEmulate = ntHeader.OptionalHeader.ImageBase + sectionHeader.VirtualAddress + sectionHeader.Misc.VirtualSize - (UINT)begin;
+				}
+			}
+		}
+
+		// emulate machine code in infinite time
+		err = uc_emu_start(m_engine, begin, begin + nNumberOfBytesToEmulate - 1, 0, 0);
+			
+		hr = (err == UC_ERR_OK) ? S_OK : E_FAIL;
+
+	Exit:
+		OnStopped();
+		uc_close(m_engine);
+		m_engine = NULL;
+		fileStream->Release();
+		return hr;
 	}
+	catch (...)
+	{
+		if (m_starting)
+		{
+			OnError(IEmulObserver::EmulatorInternalError);
+			OnStopped();
+			if (m_engine)
+			{
+				uc_close(m_engine);
+				m_engine = NULL;
+			}
+		}
+		else
+		{
+			OnError(IEmulObserver::EmulatorInternalError);
+			m_engine = NULL;
+		}
 
-	hr = EmulateCode(memPe, ntHeader.OptionalHeader.SizeOfImage,
-		(DWORD_PTR)ntHeader.OptionalHeader.ImageBase,
-		ntHeader.OptionalHeader.SizeOfStackCommit, ntHeader.OptionalHeader.SizeOfStackReserve,
-		(DWORD_PTR)begin, nNumberOfBytesToEmulate);
-
-	delete[] memPe;
-	memPe = NULL;
-	fileStream->Release();
-	return hr;
+		return E_FAIL;
+	}
 }
 
 HRESULT WINAPI CPeEmulator::AddObserver(__in IEmulObserver *observer)

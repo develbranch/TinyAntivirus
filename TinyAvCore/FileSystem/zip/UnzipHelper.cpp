@@ -1,5 +1,5 @@
 #include "UnzipHelper.h"
-#include <Windows.h>
+
 #pragma comment(lib, "zdll.lib")
 static void TranslateOpenMode(__in int mode, __out ULONG *creationMode)
 {

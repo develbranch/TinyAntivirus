@@ -26,7 +26,7 @@ HRESULT WINAPI CBufferedStream::QueryInterface(
 	return E_NOINTERFACE;
 }
 
-HRESULT WINAPI CBufferedStream::Read(__out LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize)
+HRESULT WINAPI CBufferedStream::Read(__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize)
 {
 	if (buffer == NULL || bufferSize == 0) return E_INVALIDARG;
 	ULONGLONG copySize;
@@ -45,7 +45,16 @@ HRESULT WINAPI CBufferedStream::Read(__out LPVOID buffer, __in ULONG bufferSize,
 	return S_OK;
 }
 
-HRESULT WINAPI CBufferedStream::Write(__in const void * buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize)
+HRESULT WINAPI CBufferedStream::ReadAt(
+	__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+	__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize)
+{
+	HRESULT hr = Seek(NULL, offset, moveMethod);
+	if (FAILED(hr)) return hr;
+	return Read(buffer, bufferSize, readSize);
+}
+
+HRESULT WINAPI CBufferedStream::Write(__in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize)
 {
 	if (buffer == NULL || bufferSize == 0) return E_INVALIDARG;
 
@@ -77,6 +86,15 @@ HRESULT WINAPI CBufferedStream::Write(__in const void * buffer, __in ULONG buffe
 	}
 
 	return E_NOT_VALID_STATE;
+}
+
+HRESULT WINAPI CBufferedStream::WriteAt(
+	__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+	__in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize)
+{
+	HRESULT hr = Seek(NULL, offset, moveMethod);
+	if (FAILED(hr)) return hr;
+	return Write(buffer, bufferSize, writtenSize);
 }
 
 HRESULT WINAPI CBufferedStream::Tell(__out ULARGE_INTEGER * pos)

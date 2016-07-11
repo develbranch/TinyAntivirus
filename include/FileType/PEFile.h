@@ -3,7 +3,8 @@
 #include "../TinyAvBase.h"
 #include "FileType.h"
 
-#define MAX_SECTION_COUNT (96)
+#define MAX_SECTION_COUNT	 (96)
+#define MAX_PE_HEADER_SIZE (4096)
 
 // -----------------------------
 // Interface for 32-bit PE file
@@ -19,20 +20,20 @@ public:
 	@dosHeader: a pointer to an variable storing IMAGE_DOS_HEADER header
 	@return: HRESULT on success, or other value on failure.
 	*/
-	virtual HRESULT WINAPI GetDosHeader(__out IMAGE_DOS_HEADER *dosHeader) = 0;
+	virtual HRESULT WINAPI GetDosHeader(__out_bcount(sizeof(IMAGE_DOS_HEADER)) IMAGE_DOS_HEADER *dosHeader) = 0;
 	
 	/* Retrieve PE header
 	@dosHeader: a pointer to an variable storing IMAGE_NT_HEADERS32 header
 	@return: HRESULT on success, or other value on failure.
 	*/
-	virtual HRESULT WINAPI GetPEHeader(__out IMAGE_NT_HEADERS32 *peHeader) = 0;
+	virtual HRESULT WINAPI GetPEHeader(__out_bcount(sizeof(IMAGE_NT_HEADERS32)) IMAGE_NT_HEADERS32 *peHeader) = 0;
 	
 	/* Retrieve section header
 	@sectionIndex: section index
 	@sectionHeader: a pointer to an variable storing IMAGE_SECTION_HEADER header
 	@return: HRESULT on success, or other value on failure.
 	*/
-	virtual HRESULT WINAPI GetSectionHeader(__in UINT sectionIndex, __out IMAGE_SECTION_HEADER *sectionHeader) = 0;
+	virtual HRESULT WINAPI GetSectionHeader(__in UINT sectionIndex, __out_bcount(IMAGE_SIZEOF_SECTION_HEADER) IMAGE_SECTION_HEADER *sectionHeader) = 0;
 	
 	// Retrieve the number of section in header
 	//@return: number of section.

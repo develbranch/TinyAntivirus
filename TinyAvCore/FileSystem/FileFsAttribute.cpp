@@ -1,4 +1,3 @@
-#include <Windows.h>
 #include "FileFsAttribute.h"
 
 CFileFsAttribute::CFileFsAttribute()
@@ -41,9 +40,12 @@ HRESULT WINAPI CFileFsAttribute::Size(__out ULARGE_INTEGER * fileSize)
 		return E_INVALIDARG;
 	}
 
+	HRESULT hr = QueryAttributes();
+	if (FAILED(hr)) return hr;
+
 	fileSize->u.HighPart = m_wfd.nFileSizeHigh;
 	fileSize->u.LowPart = m_wfd.nFileSizeLow;
-	return S_OK;
+	return hr;
 }
 
 HRESULT WINAPI CFileFsAttribute::Attributes(__out DWORD *attribs)
@@ -56,9 +58,11 @@ HRESULT WINAPI CFileFsAttribute::Attributes(__out DWORD *attribs)
 	{
 		return E_INVALIDARG;
 	}
+	HRESULT hr = QueryAttributes();
+	if (FAILED(hr)) return hr;
 
 	*attribs = m_wfd.dwFileAttributes;
-	return S_OK;
+	return hr;
 }
 
 HRESULT WINAPI CFileFsAttribute::SetAttributes(__in DWORD attribs)
@@ -91,10 +95,13 @@ HRESULT WINAPI CFileFsAttribute::Time(
 		return E_INVALIDARG;
 	}
 
+	HRESULT hr = QueryAttributes();
+	if (FAILED(hr)) return hr;
+
 	if (lpCreationTime) *lpCreationTime = m_wfd.ftCreationTime;
 	if (lpLastAccessTime) *lpLastAccessTime = m_wfd.ftLastAccessTime;
 	if (lpLastWriteTime) *lpLastWriteTime = m_wfd.ftLastWriteTime;
-	return S_OK;
+	return hr;
 }
 
 HRESULT WINAPI CFileFsAttribute::SetTime(
@@ -138,12 +145,16 @@ HRESULT WINAPI CFileFsAttribute::SetTime(
 
 HRESULT WINAPI CFileFsAttribute::SetFilePath(__in LPCWSTR lpFilePath, __in_opt void* handle /*= NULL*/)
 {
-	HRESULT hr;
 	m_handle = handle;
 	m_fileName = lpFilePath;
-	HANDLE hFind = FindFirstFileW(lpFilePath, &m_wfd);
+	return QueryAttributes();
+}
+
+HRESULT WINAPI CFileFsAttribute::QueryAttributes(void)
+{
+	HANDLE hFind = FindFirstFileW(m_fileName.c_str(), &m_wfd);
 	m_bInited = (hFind != INVALID_HANDLE_VALUE);
-	hr = m_bInited ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+	HRESULT hr = m_bInited ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 	FindClose(hFind);
 	return hr;
 }

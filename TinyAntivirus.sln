@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyAvConsole", "TinyAvCons
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SalityKiller", "SalityKiller\SalityKiller.vcxproj", "{29F78C28-341C-4D6F-BE65-2CD559672A56}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Unittests", "tests\Unittests\Unittests.vcxproj", "{39BBD212-79B1-4527-8D62-194A6A8428A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{29F78C28-341C-4D6F-BE65-2CD559672A56}.Release|x64.Build.0 = Release|x64
 		{29F78C28-341C-4D6F-BE65-2CD559672A56}.Release|x86.ActiveCfg = Release|Win32
 		{29F78C28-341C-4D6F-BE65-2CD559672A56}.Release|x86.Build.0 = Release|Win32
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Debug|x64.ActiveCfg = Debug|x64
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Debug|x64.Build.0 = Debug|x64
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Debug|x86.ActiveCfg = Debug|Win32
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Debug|x86.Build.0 = Debug|Win32
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Release|x64.ActiveCfg = Release|x64
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Release|x64.Build.0 = Release|x64
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Release|x86.ActiveCfg = Release|Win32
+		{39BBD212-79B1-4527-8D62-194A6A8428A8}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -167,10 +167,9 @@ HRESULT WINAPI CKillVirus::Scan(__in IVirtualFs * file, __in IFsEnumContext * co
 							UINT fileOffset = 0;
 							if (SUCCEEDED(m_parser->VaToFileOffset(m_OepAddr, &fileOffset)))
 							{
-								LARGE_INTEGER distanceToMove = {};
-								distanceToMove.QuadPart = fileOffset;
-								if (SUCCEEDED(fileStream->Seek(NULL, distanceToMove, IFsStream::FsStreamBegin)) &&
-									SUCCEEDED(fileStream->Write(m_OepCode, m_dwOepCodeSize, NULL)) &&
+								LARGE_INTEGER epOffset = {};
+								epOffset.QuadPart = fileOffset;
+								if (SUCCEEDED(fileStream->WriteAt(epOffset, IFsStream::FsStreamBegin, m_OepCode, m_dwOepCodeSize, NULL)) &&
 									SUCCEEDED(m_parser->SetVaToEntryPoint(m_OepAddr)))
 								{
 									m_scanResult.cleanResult = CleanVirusSucceeded;
@@ -279,42 +278,45 @@ void CKillVirus::OnHookCode(uint64_t address, uint32_t size)
 					0x81, 0xC4 };
 				detected &= memcmp(sality, signature1, sizeof(signature1)) == 0;
 
-				static unsigned char signature2[] = {
-					0x89, 0x85, 0x54, 0x12, 0x40, 0x00, 0xEB, 0x19,
-					0xC7, 0x85, 0x4D, 0x14, 0x40, 0x00, 0x22, 0x22,
-					0x22, 0x22, 0xC7, 0x85, 0x3A, 0x14, 0x40, 0x00,
-					0x33, 0x33, 0x33, 0x33, 0xE9, 0x82, 0x00, 0x00,
-					0x00, 0x33, 0xDB, 0x64, 0x67, 0x8B, 0x1E, 0x30,
-					0x00, 0x85, 0xDB, 0x78, 0x0E, 0x8B, 0x5B, 0x0C };
-				detected &= memcmp(sality + 0x23, signature2, sizeof(signature2)) == 0;
-
 				if (detected)
 				{
-					m_scanResult.scanResult = VirusDetected;
+					static unsigned char signature2[] = {
+										0x89, 0x85, 0x54, 0x12, 0x40, 0x00, 0xEB, 0x19,
+										0xC7, 0x85, 0x4D, 0x14, 0x40, 0x00, 0x22, 0x22,
+										0x22, 0x22, 0xC7, 0x85, 0x3A, 0x14, 0x40, 0x00,
+										0x33, 0x33, 0x33, 0x33, 0xE9, 0x82, 0x00, 0x00,
+										0x00, 0x33, 0xDB, 0x64, 0x67, 0x8B, 0x1E, 0x30,
+										0x00, 0x85, 0xDB, 0x78, 0x0E, 0x8B, 0x5B, 0x0C };
+					detected &= memcmp(sality + 0x23, signature2, sizeof(signature2)) == 0;
 
-					if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1F, &m_OepAddr, sizeof(DWORD))))
+					if (detected)
 					{
-						m_OepAddr = salityEp + 5 - m_OepAddr;
-						unsigned char bRestoreOepCode = 0;
+						m_scanResult.scanResult = VirusDetected;
 
-						if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1773, &bRestoreOepCode, sizeof(bRestoreOepCode))) &&
-							bRestoreOepCode &&
-							SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1774, &m_dwOepCodeSize, sizeof(m_dwOepCodeSize))))
+						if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1F, &m_OepAddr, sizeof(DWORD))))
 						{
-							m_OepCode = new BYTE[m_dwOepCodeSize];
-							if (m_OepCode)
+							m_OepAddr = salityEp + 5 - m_OepAddr;
+							unsigned char bRestoreOepCode = 0;
+
+							if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1773, &bRestoreOepCode, sizeof(bRestoreOepCode))) &&
+								bRestoreOepCode &&
+								SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1774, &m_dwOepCodeSize, sizeof(m_dwOepCodeSize))))
 							{
-								m_salityEp = salityEp;
-								if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1778, m_OepCode, m_dwOepCodeSize)))
+								m_OepCode = new BYTE[m_dwOepCodeSize];
+								if (m_OepCode)
 								{
-									delete[] m_OepCode;
-									m_OepCode = NULL;
-									m_dwOepCodeSize = 0;
+									m_salityEp = salityEp;
+									if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1778, m_OepCode, m_dwOepCodeSize)))
+									{
+										delete[] m_OepCode;
+										m_OepCode = NULL;
+										m_dwOepCodeSize = 0;
+									}
 								}
 							}
 						}
+						m_emul->StopEmulator();
 					}
-					m_emul->StopEmulator();
 				}
 				delete[] sality;
 			}

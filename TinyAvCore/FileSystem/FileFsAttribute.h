@@ -30,5 +30,8 @@ public:
 
 	virtual HRESULT WINAPI SetFilePath(__in LPCWSTR lpFilePath, __in_opt void* handle /*= NULL*/) override;
 
+protected:
+	virtual HRESULT WINAPI QueryAttributes(void);
+
 };
 

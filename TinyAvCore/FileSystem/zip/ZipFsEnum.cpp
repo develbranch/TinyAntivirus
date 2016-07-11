@@ -1,6 +1,5 @@
 #include "ZipFsEnum.h"
 #include "UnzipHelper.h"
-#include <TinyAvCore.h>
 #include "../../Utils.h"
 #include "ZipFs.h"
 

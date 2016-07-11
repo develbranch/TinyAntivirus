@@ -35,8 +35,8 @@ HRESULT WINAPI CFileFsStream::QueryInterface(
 }
 
 HRESULT WINAPI CFileFsStream::Read(
-	__out LPVOID buffer,
-	__in ULONG bufferSize,
+	__out_bcount(bufferSize) LPVOID buffer,
+	__in ULONG bufferSize, 
 	__out_opt ULONG * readSize)
 {
 	ULONG r;
@@ -79,9 +79,18 @@ HRESULT WINAPI CFileFsStream::Read(
 	return S_OK;
 }
 
+HRESULT WINAPI CFileFsStream::ReadAt(
+	__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+	__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize)
+{
+	HRESULT hr = Seek(NULL, offset, moveMethod);
+	if (FAILED(hr)) return hr;
+	return Read(buffer, bufferSize, readSize);
+}
+
 HRESULT WINAPI CFileFsStream::Write(
-	__in const void * buffer,
-	__in ULONG bufferSize,
+	__in_bcount(bufferSize) LPCVOID buffer,
+	__in ULONG bufferSize, 
 	__out_opt ULONG * writtenSize)
 {
 	ULONG w;
@@ -111,6 +120,13 @@ HRESULT WINAPI CFileFsStream::Write(
 
 	if (writtenSize) *writtenSize = w;
 	return S_OK;
+}
+
+HRESULT WINAPI CFileFsStream::WriteAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, __in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize)
+{
+	HRESULT hr = Seek(NULL, offset, moveMethod);
+	if (FAILED(hr)) return hr;
+	return Write(buffer, bufferSize, writtenSize);
 }
 
 HRESULT WINAPI CFileFsStream::Tell(__out ULARGE_INTEGER * pos)

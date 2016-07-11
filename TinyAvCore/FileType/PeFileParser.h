@@ -26,11 +26,11 @@ public:
 
 	virtual HRESULT WINAPI QueryInterface(__in REFIID riid, __out _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
 
-	virtual HRESULT WINAPI GetDosHeader(__out IMAGE_DOS_HEADER *dosHeader) override;
+	virtual HRESULT WINAPI GetDosHeader(__out_bcount(sizeof(IMAGE_DOS_HEADER)) IMAGE_DOS_HEADER *dosHeader) override;
 
-	virtual HRESULT WINAPI GetPEHeader(__out IMAGE_NT_HEADERS32 *peHeader) override;
+	virtual HRESULT WINAPI GetPEHeader(__out_bcount(sizeof(IMAGE_NT_HEADERS32)) IMAGE_NT_HEADERS32 *peHeader) override;
 
-	virtual HRESULT WINAPI GetSectionHeader(__in UINT sectionIndex, __out IMAGE_SECTION_HEADER *sectionHeader) override;
+	virtual HRESULT WINAPI GetSectionHeader(__in UINT sectionIndex, __out_bcount(IMAGE_SIZEOF_SECTION_HEADER) IMAGE_SECTION_HEADER *sectionHeader) override;
 
 	virtual UINT WINAPI GetSectionCount(void) override;
 
@@ -73,18 +73,23 @@ private:
 	// -----------------------------
 	// Internal methods
 	// -----------------------------
-	bool ValidatePeHeader(void);
+
 	// Parse the PE header
-	bool ParsePEHeader(__in IFsStream *fsStream);
+	bool ParsePEHeader(__in IVirtualFs* fsFile);
+
+	// check PE header for malformed header
+	bool ValidatePeHeader(__in IFsStream *fsStream);
 
 	// Initialize the section table
-	void InitSectionTable(__in IFsStream *fsStream);
+	bool InitSectionTable(__in IFsStream *fsStream);
 	// Parse the section table
-	void ParseSectionTable(__in const BYTE *sectionData, __in ULONG maxSectionCount);
-
-	DWORD Align(__in DWORD n, __in DWORD a);
+	bool ParseSectionTable(__in const BYTE *sectionData, __in ULONG maxSectionCount);
 
 protected:
 	HRESULT FlushPeHeader(void);
+
+public:
+	static DWORD SectionAlign(__in DWORD n, __in DWORD a);
+	static DWORD FileAlign(__in DWORD n, __in DWORD a);
 };
 
