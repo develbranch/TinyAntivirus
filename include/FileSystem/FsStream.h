@@ -7,9 +7,9 @@ IFsStream : public IUnknown
 public:
 	enum FsStreamSeek
 	{
-		FsStreamBegin = 1,	  // Beginning of stream
+		FsStreamBegin   = 1,  // Beginning of stream
 		FsStreamCurrent = 2,  // Current position of the stream pointer
-		FsStreamEnd = 3,	  // End of stream
+		FsStreamEnd     = 3,  // End of stream
 	};
 
 	BEGIN_INTERFACE
@@ -42,7 +42,8 @@ public:
 	@readSize: A pointer to the variable that receives the number of bytes read.
 	@return: If the function succeeds, the return value is S_OK.
 	*/
-	virtual HRESULT WINAPI ReadAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, __out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize) = 0;
+	virtual HRESULT WINAPI ReadAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+		__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize) = 0;
 
 	/* Write data to the specified stream.
 	@buffer: A pointer to the buffer containing the data to be written to stream.
@@ -66,7 +67,8 @@ public:
 	@readSize: A pointer to the variable that receives the number of bytes read.
 	@return: If the function succeeds, the return value is S_OK.
 	*/
-	virtual HRESULT WINAPI WriteAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, __in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize) = 0;
+	virtual HRESULT WINAPI WriteAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod,
+		__in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize) = 0;
 
 	// Get the stream pointer of the specified stream.
 	//@pos: A pointer to a variable to receive the new file pointer.
@@ -81,9 +83,9 @@ public:
 	parameter is NULL, the new file pointer is not returned.
 	@MoveMethod: The starting point for the file pointer move. This parameter
 	can be one of the following values:
-		FsStreamBegin: The starting point is the beginning of the stream.
+		FsStreamBegin  : The starting point is the beginning of the stream.
 		FsStreamCurrent: The start point is the current value of the stream pointer.
-		FsStreamEnd: The starting point is the current end-of-stream position.
+		FsStreamEnd    : The starting point is the current end-of-stream position.
 	@return: If the function succeeds, the return value is S_OK.
 	*/
 	virtual HRESULT WINAPI Seek(__out_opt ULARGE_INTEGER * pos, __in LARGE_INTEGER const distanceToMove, __in const FsStreamSeek MoveMethod) = 0;

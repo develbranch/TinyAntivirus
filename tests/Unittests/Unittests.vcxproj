@@ -148,7 +148,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FileFsAttribute_unittest.cpp" />
+    <ClCompile Include="FileFsEnum_unittest.cpp" />
     <ClCompile Include="FileFsStream_unittest.cpp" />
+    <ClCompile Include="FileFs_unittest.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -292,8 +292,19 @@ HRESULT WINAPI CFileFs::GetFileName(__out BSTR *fileName)
 {
 	if (fileName == NULL) return E_INVALIDARG;
 	if (m_FileName.length() == 0) return E_NOT_SET;
-	*fileName = SysAllocString(m_FileName.c_str());
-	return *fileName ? S_OK : E_OUTOFMEMORY;
+	size_t pos = m_FileName.rfind(L'\\');
+	if (pos == StringW::npos)
+	{
+		*fileName = SysAllocString(m_FileName.c_str());
+		return *fileName ? S_OK : E_OUTOFMEMORY;
+	}
+	else
+	{
+		if (m_FileName.length() - pos - 1 == 0) return E_NOT_VALID_STATE;
+		StringW name = m_FileName.substr(pos + 1, m_FileName.length() - pos - 1);
+		*fileName = SysAllocString(name.c_str());
+		return *fileName ? S_OK : E_OUTOFMEMORY;
+	}
 }
 
 HRESULT WINAPI CFileFs::GetFileExt(__out BSTR *fileExt)
@@ -301,7 +312,7 @@ HRESULT WINAPI CFileFs::GetFileExt(__out BSTR *fileExt)
 	if (fileExt == NULL) return E_INVALIDARG;
 	if (m_FileName.length() == 0) return E_NOT_SET;
 	size_t pos = m_FileName.rfind(L'.');
-	if (pos == StringT::npos) return E_NOT_VALID_STATE;
+	if (pos == StringW::npos) return E_NOT_VALID_STATE;
 	if (m_FileName.length() - pos - 1 == 0) return E_NOT_SET;
 	StringW ext = m_FileName.substr(pos + 1, m_FileName.length() - pos - 1);
 

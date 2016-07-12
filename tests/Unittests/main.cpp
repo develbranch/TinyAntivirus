@@ -6,12 +6,14 @@
 #pragma comment(lib, "TinyAvCore.lib" )
 #include <windows.h>
 #include <shlwapi.h>
-TCHAR szTestcase[MAX_PATH] = {};
 #pragma comment(lib, "shlwapi.lib" )
 
 #if defined DEBUG || defined _DEBUG
 #include <crtdbg.h>
 #endif
+
+WCHAR szTestcase[MAX_PATH] = {};
+WCHAR szSampleDir[MAX_PATH] = {};
 
 int main(int argc, char** argv)
 {
@@ -23,9 +25,17 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	GetModuleFileName(NULL, szTestcase, MAX_PATH);
-	PathRemoveFileSpec(szTestcase);
-	PathAppend(szTestcase, TEXT("testcase.bin"));
+	if (argc >= 2)
+	{
+		MultiByteToWideChar(CP_UTF8, 0, argv[1], -1, szSampleDir, MAX_PATH);
+	}
+	else
+	{
+		return 1;
+	}
+
+	wcscpy_s(szTestcase, MAX_PATH, szSampleDir);
+	PathAppendW(szTestcase, L"testcase.bin");
 	
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();

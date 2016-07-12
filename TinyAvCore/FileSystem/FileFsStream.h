@@ -21,19 +21,23 @@ protected:
 public:
 	CFileFsStream();
 
+	// implement IUnknown interface
 	DECLARE_REF_COUNT();
 
 	virtual HRESULT WINAPI QueryInterface(
 		__in REFIID riid,
 		__out _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject);
 
+	// implement IFsStream interface
 	virtual HRESULT WINAPI Read(__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize) override;
 	
-	virtual HRESULT WINAPI ReadAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, __out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize) override;
+	virtual HRESULT WINAPI ReadAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+		__out_bcount(bufferSize) LPVOID buffer, __in ULONG bufferSize, __out_opt ULONG * readSize) override;
 	
 	virtual HRESULT WINAPI Write(__in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize) override;
 
-	virtual HRESULT WINAPI WriteAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, __in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize) override;
+	virtual HRESULT WINAPI WriteAt(__in LARGE_INTEGER const offset, __in const FsStreamSeek moveMethod, 
+		__in_bcount(bufferSize) LPCVOID buffer, __in ULONG bufferSize, __out_opt ULONG * writtenSize) override;
 
 	virtual HRESULT WINAPI Tell(__out ULARGE_INTEGER * pos) override;
 

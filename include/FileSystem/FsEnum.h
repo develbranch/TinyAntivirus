@@ -14,6 +14,7 @@ public:
 		FsEnumAccessDenied,
 		FsEnumNotFound
 	};
+
 	/*
 	Register an observer for enumeration
 	The observer will be called when a new file is hit.

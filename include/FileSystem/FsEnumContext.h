@@ -74,6 +74,7 @@ public:
 	virtual HRESULT WINAPI SetFlags(__in const ULONG flags) = 0;
 	virtual ULONG WINAPI GetFlags( void ) = 0;
 
+	// #todo: must implement
 	virtual HRESULT WINAPI AddIgnoreItem(__in LPCWSTR lpPath) = 0;
 	virtual HRESULT WINAPI RemoveIgnoreItem(__in LPCWSTR lpPath) = 0;
 	virtual HRESULT WINAPI GetIgnoreList(__out BSTR* lpPath, __out UINT *itemCount) = 0;

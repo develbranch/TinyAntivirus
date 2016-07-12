@@ -1,16 +1,13 @@
 #include <gtest/gtest.h>
-#define TEST_FILEFSSTREAM
-#if defined TEST_FILEFSSTREAM
-
 #include <TinyAvCore.h>
 #include <string.h>
 #include "../TinyAvCore/FileSystem/FileFsStream.h"
 
-extern TCHAR szTestcase[MAX_PATH];
+extern WCHAR szTestcase[MAX_PATH];
 
 TEST(FileFsStream, Seek)
 {
-	HANDLE hFile = CreateFile(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFileW(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	ASSERT_NE(INVALID_HANDLE_VALUE, hFile);
 	IFsStream * fsStream;
 	ULARGE_INTEGER pos;
@@ -18,20 +15,20 @@ TEST(FileFsStream, Seek)
 	fsStream->SetFileHandle((void*)hFile);
 	LARGE_INTEGER offset = {};
 	offset.QuadPart = 200;
-	EXPECT_EQ(S_OK, fsStream->Seek(&pos, offset, IFsStream::FsStreamBegin));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, offset, IFsStream::FsStreamBegin));
 	ASSERT_EQ(200, pos.QuadPart);
 	offset.QuadPart = 200;
-	EXPECT_EQ(S_OK, fsStream->Seek(&pos, offset, IFsStream::FsStreamCurrent));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, offset, IFsStream::FsStreamCurrent));
 	ASSERT_EQ(400, pos.QuadPart);
 	offset.LowPart = -100;
 	offset.HighPart = -1;
-	EXPECT_EQ(S_OK, fsStream->Seek(&pos, offset, IFsStream::FsStreamCurrent));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, offset, IFsStream::FsStreamCurrent));
 	ASSERT_EQ(300, pos.QuadPart);
-	ASSERT_EQ(S_OK, fsStream->Tell(&pos));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Tell(&pos));
 	ASSERT_EQ(300, pos.QuadPart);
 	offset.LowPart = -1;
 	offset.HighPart = -1;
-	EXPECT_EQ(S_OK, fsStream->Seek(&pos, offset, IFsStream::FsStreamEnd));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, offset, IFsStream::FsStreamEnd));
 	ASSERT_EQ(0x100000 + offset.QuadPart, pos.QuadPart);
 	CloseHandle(hFile);
 	fsStream->Release();
@@ -39,7 +36,7 @@ TEST(FileFsStream, Seek)
 
 TEST(FileFsStream, Tell)
 {
-	HANDLE hFile = CreateFile(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFileW(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	ASSERT_NE(INVALID_HANDLE_VALUE, hFile);
 	IFsStream * fsStream;
 	fsStream = new CFileFsStream();
@@ -47,16 +44,16 @@ TEST(FileFsStream, Tell)
 	LARGE_INTEGER distanceToMove = {};
 	distanceToMove.QuadPart = 200;
 	ULARGE_INTEGER pos;
-	ASSERT_EQ(S_OK, fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamBegin));
 	ASSERT_EQ(200, pos.QuadPart);
-	ASSERT_EQ(S_OK, fsStream->Tell(&pos));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Tell(&pos));
 	ASSERT_EQ(200, pos.QuadPart);
-	ASSERT_EQ(S_OK, fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamCurrent));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamCurrent));
 	ASSERT_EQ(400, pos.QuadPart);
 	distanceToMove.QuadPart = -100;
-	ASSERT_EQ(S_OK, fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamCurrent));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamCurrent));
 	ASSERT_EQ(300, pos.QuadPart);
-	ASSERT_EQ(S_OK, fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamEnd));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Seek(&pos, distanceToMove, IFsStream::FsStreamEnd));
 	ASSERT_EQ(0x100000 + distanceToMove.QuadPart, pos.QuadPart);
 	CloseHandle(hFile);
 	fsStream->Release();
@@ -64,7 +61,7 @@ TEST(FileFsStream, Tell)
 
 TEST(FileFsStream, ReadAt)
 {
-	HANDLE hFile = CreateFile(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFileW(szTestcase, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	ASSERT_NE(INVALID_HANDLE_VALUE, hFile);
 	IFsStream * fsStream;
 	fsStream = new CFileFsStream();
@@ -84,7 +81,7 @@ TEST(FileFsStream, ReadAt)
 	
 	// read data in cache
 	offset.QuadPart = 0;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase1), &readSize));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase1), &readSize));
 	ASSERT_EQ(sizeof(testcase1), readSize);
 	ASSERT_TRUE(0 == memcmp(buffer, testcase1, sizeof(testcase1)));
 
@@ -97,25 +94,25 @@ TEST(FileFsStream, ReadAt)
 
 	// read data without cache + update cache
 	offset.QuadPart = DEFAULT_MAX_CACHE_SIZE +0x10;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase2), &readSize));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase2), &readSize));
 	ASSERT_EQ(sizeof(testcase2), readSize);
 	ASSERT_TRUE(0 == memcmp(buffer, testcase2, sizeof(testcase2)));
 
 	// cache hit!
 	offset.QuadPart = DEFAULT_MAX_CACHE_SIZE + 0x20;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, 0x20, &readSize));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, 0x20, &readSize));
 	ASSERT_EQ(0x20, readSize);
 	ASSERT_TRUE(0 == memcmp(buffer, testcase2 + 0x10, 0x20));
 
 	// cache not found
 	offset.QuadPart = DEFAULT_MAX_CACHE_SIZE + 0x10;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, 0x60, &readSize));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, 0x60, &readSize));
 	ASSERT_EQ(0x60, readSize);
 	ASSERT_TRUE(0 == memcmp(buffer, testcase2, sizeof(testcase2)));
 
 	// cache not found, re-test testcase1
 	offset.QuadPart = 0;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase1), &readSize));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buffer, sizeof(testcase1), &readSize));
 	ASSERT_EQ(sizeof(testcase1), readSize);
 	ASSERT_TRUE(0 == memcmp(buffer, testcase1, sizeof(testcase1)));
 
@@ -125,7 +122,7 @@ TEST(FileFsStream, ReadAt)
 
 TEST(FileFsStream, WriteAt)
 {
-	HANDLE hFile = CreateFile(szTestcase, GENERIC_WRITE| GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFileW(szTestcase, GENERIC_WRITE| GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	DWORD dw = GetLastError();
 	ASSERT_NE(INVALID_HANDLE_VALUE, hFile);
 	IFsStream * fsStream;
@@ -138,26 +135,24 @@ TEST(FileFsStream, WriteAt)
 	unsigned char buf[10];
 
 	offset.QuadPart = 0x200;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, backup, sizeof(backup), &size));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, backup, sizeof(backup), &size));
 
 	unsigned char testcase1[10] = {
 		0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,
 	};
 	offset.QuadPart = 0x200;
-	ASSERT_EQ(S_OK, fsStream->WriteAt(offset, IFsStream::FsStreamBegin, testcase1, 10, &size));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->WriteAt(offset, IFsStream::FsStreamBegin, testcase1, 10, &size));
 	ASSERT_EQ(10, size);
-	fsStream->Tell(&pos);
+	ASSERT_HRESULT_SUCCEEDED(fsStream->Tell(&pos));
 	ASSERT_EQ(0x200 + 10, pos.QuadPart);
 	offset.QuadPart = 0x200;
-	ASSERT_EQ(S_OK, fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buf, sizeof(buf), &size));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->ReadAt(offset, IFsStream::FsStreamBegin, buf, sizeof(buf), &size));
 	ASSERT_TRUE(0 == memcmp(buf, testcase1, sizeof(testcase1)));
 	
 	offset.QuadPart = 0x200;
-	ASSERT_EQ(S_OK, fsStream->WriteAt(offset, IFsStream::FsStreamBegin, backup, sizeof(backup), &size));
+	ASSERT_HRESULT_SUCCEEDED(fsStream->WriteAt(offset, IFsStream::FsStreamBegin, backup, sizeof(backup), &size));
 	ASSERT_EQ(10, size);
 	
 	CloseHandle(hFile);
 	fsStream->Release();
 }
-
-#endif

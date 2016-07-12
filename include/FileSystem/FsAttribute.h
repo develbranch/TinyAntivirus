@@ -7,6 +7,7 @@ IFsAttribute : public IUnknown
 	BEGIN_INTERFACE
 
 public:
+	
 	/*
 	Set file path and file handle
 	@lpFilePath: a pointer to file path 
