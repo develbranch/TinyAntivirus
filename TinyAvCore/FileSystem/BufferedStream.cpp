@@ -108,7 +108,6 @@ HRESULT WINAPI CBufferedStream::Tell(__out ULARGE_INTEGER * pos)
 HRESULT WINAPI CBufferedStream::Seek(__out_opt ULARGE_INTEGER * pos, __in LARGE_INTEGER const distanceToMove, __in const FsStreamSeek MoveMethod)
 {
 	ULONGLONG newPos;
-	if (pos == NULL) return E_INVALIDARG;
 
 	switch (MoveMethod)
 	{
