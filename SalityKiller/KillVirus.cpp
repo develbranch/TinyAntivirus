@@ -42,8 +42,8 @@ HRESULT WINAPI CKillVirus::QueryInterface(__in REFIID riid, __out void **ppvObje
 {
 	if (ppvObject == NULL) return E_INVALIDARG;
 
-	if (riid == IID_IUnknown ||
-		riid == __uuidof(IScanModule))
+	if (IsEqualIID(riid, IID_IUnknown) ||
+		IsEqualIID(riid, __uuidof(IScanModule)))
 	{
 		*ppvObject = static_cast<IScanModule*>(this);
 		AddRef();
@@ -122,76 +122,101 @@ HRESULT WINAPI CKillVirus::Scan(__in IVirtualFs * file, __in IFsEnumContext * co
 	m_scanResult.scanResult = NoVirus;
 	m_scanResult.cleanResult = DonotClean;
 
+	// notify observer before scanning file
 	hr = observer->OnPreScan(file, context);
-	if (FAILED(hr)) return hr;
+	if (FAILED(hr)) return hr; // failed --> return
 
+	// check for PE file type
 	hr = m_parser->CheckType(file, &isMatched);
-
-	if (FAILED(hr) || isMatched == FALSE) return hr;
+	if (FAILED(hr) || isMatched == FALSE) return hr; // not PE file or malformed 
 
 	m_emulErrCode = 0;
+	// emulate code from entry point to end of section
 	hr = m_emul->EmulatePeFile(m_parser, 0, IEmulator::FromEntryPoint, 0);
-	if (m_emulErrCode)
-		observer->OnError(m_emulErrCode);
-	if (SUCCEEDED(hr))
-	{
-		if (m_scanResult.scanResult == VirusDetected)
-		{
-			wcscpy_s(m_scanResult.malwareName, MAX_NAME, m_info.name);
-			hr = observer->OnPreClean(file, context, &m_scanResult);
-			if (FAILED(hr)) goto Exit;
-			if (TEST_FLAG(context->GetFlags(), IFsEnumContext::Disinfect))
-			{
-				ULONG fsType;
-				hr = file->GetFsType(&fsType);
-				if (FAILED(hr))
-				{
-					m_scanResult.cleanResult = CleanVirusDenied;
-					goto Exit;
-				}
 
-				if (fsType == IVirtualFs::archive)
+	// emulator reports error
+	if (m_emulErrCode) observer->OnError(m_emulErrCode);
+
+	if (FAILED(hr) ||
+		(m_scanResult.scanResult != VirusDetected))
+	{
+		goto Exit;
+	}
+
+	wcscpy_s(m_scanResult.malwareName, MAX_NAME, m_info.name); // get virus name
+
+	// check scan context
+	if (TEST_FLAG(context->GetFlags(), IFsEnumContext::Disinfect) == FALSE) // Scan virus only
+	{
+		m_scanResult.cleanResult = CleanVirusDenied;
+		hr = S_OK;
+		goto Exit;
+	}
+
+	hr = observer->OnPreClean(file, context, &m_scanResult);   // notify observer before cleaning file
+	if (FAILED(hr)) goto Exit;  // leave it alone!
+
+	ULONG fsType;
+	hr = file->GetFsType(&fsType);
+	if (FAILED(hr)) // can not get file type
+	{
+		m_scanResult.cleanResult = CleanVirusDenied;
+		hr = E_FAIL; // failed
+		goto Exit;
+	}
+
+	/* virus has been detected inside an archive
+	   I will improve Archiver module to disinfect virus. Now, I can only delete it.
+	*/
+	if (fsType == IVirtualFs::archive)
+	{
+		file->DeferredDelete();
+		m_scanResult.cleanResult = VirusDeleted;
+		hr = S_OK;
+		goto Exit;
+	}
+	else
+	{
+		if (m_dwOepCodeSize == 1) // Patient Zero --> delete it
+		{
+			file->DeferredDelete(); // just delete it
+			m_scanResult.cleanResult = VirusDeleted;
+			hr = S_OK;
+			goto Exit;
+		}
+
+		IFsStream * fileStream = NULL;
+		if (FAILED(file->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fileStream)))
+		{
+			m_scanResult.cleanResult = CleanVirusDenied;
+			hr = E_FAIL; // failed
+			goto Exit;
+		}
+
+		hr = E_FAIL;
+		if (m_OepAddr && m_OepCode)// found Original EntryPoint
+		{
+			UINT fileOffset = 0;
+			if (SUCCEEDED(hr = m_parser->VaToFileOffset(m_OepAddr, &fileOffset)))
+			{
+				LARGE_INTEGER epOffset = {};
+				epOffset.QuadPart = fileOffset;  // restore original code
+				if (SUCCEEDED(hr = fileStream->WriteAt(epOffset, IFsStream::FsStreamBegin, m_OepCode, m_dwOepCodeSize, NULL)) &&
+					SUCCEEDED(hr = m_parser->SetVaToEntryPoint(m_OepAddr)))
 				{
-					file->DeferredDelete();
-					m_scanResult.cleanResult = VirusDeleted;
-					hr = S_OK;
-					goto Exit;
+					hr = S_FALSE; // re-scan
+					m_scanResult.cleanResult = CleanVirusSucceeded;
+					if (m_salityEp)
+						m_parser->Truncate(m_salityEp - 0x1116); // remove virus code
 				}
 				else
 				{
-					IFsStream * fileStream = NULL;
-					if (SUCCEEDED(file->QueryInterface(__uuidof(IFsStream), (LPVOID*)&fileStream)))
-					{
-						if (m_OepAddr)
-						{
-							UINT fileOffset = 0;
-							if (SUCCEEDED(m_parser->VaToFileOffset(m_OepAddr, &fileOffset)))
-							{
-								LARGE_INTEGER epOffset = {};
-								epOffset.QuadPart = fileOffset;
-								if (SUCCEEDED(fileStream->WriteAt(epOffset, IFsStream::FsStreamBegin, m_OepCode, m_dwOepCodeSize, NULL)) &&
-									SUCCEEDED(m_parser->SetVaToEntryPoint(m_OepAddr)))
-								{
-									m_scanResult.cleanResult = CleanVirusSucceeded;
-									if (m_salityEp)
-									{
-										m_parser->Truncate(m_salityEp - 0x1116);
-									}
-								}
-								else
-								{
-									m_scanResult.cleanResult = CleanVirusDenied;
-								}
-							}
-						}
-						fileStream->Release();
-					}
-
-					hr = S_FALSE; // re-scan
-					goto Exit;
+					m_scanResult.cleanResult = CleanVirusDenied;
 				}
 			}
 		}
+		fileStream->Release();
+		goto Exit;
 	}
 
 Exit:
@@ -256,72 +281,87 @@ void CKillVirus::OnHookCode(uint64_t address, uint32_t size)
 		return;
 	}
 
-	if (size == 1)
+	// check for RETN instruction
+	unsigned char opCode;
+
+	// check instruction size
+	if (size != 1) return;
+	// check instruction code
+	if (FAILED(m_emul->ReadMemory((DWORD_PTR)address, &opCode, size))) return;
+	if (opCode != 0xc3) return;
+
+	// find VA of new state
+	uint32_t salityEp = 0;
+	if (FAILED(m_emul->ReadRegister(UC_X86_REG_ESP, (DWORD_PTR *)&salityEp)) ||
+		FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp, &salityEp, sizeof(salityEp)))
+		)
+		return;
+
+	BYTE * sality = new BYTE[0x100];
+	if (sality == NULL) return;
+
+	// check sality code
+	if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp, sality, 0x100)) ||
+		!VerifySignature(sality, 0x100)
+		)
 	{
-		unsigned char opCode;
-		m_emul->ReadMemory((DWORD_PTR)address, &opCode, size);
-		if (opCode == 0xc3) // RETN
+		delete[] sality;
+		return;
+	}
+
+	// virus FOUND!
+	m_scanResult.scanResult = VirusDetected;
+
+	// find original code
+	if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1F, &m_OepAddr, sizeof(DWORD))))
+	{
+		m_OepAddr = salityEp + 5 - m_OepAddr;
+		unsigned char bRestoreOepCode = 0;
+
+		if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1773, &bRestoreOepCode, sizeof(bRestoreOepCode))) &&
+			bRestoreOepCode &&
+			SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1774, &m_dwOepCodeSize, sizeof(m_dwOepCodeSize))))
 		{
-			uint32_t salityEp = 0;
-			m_emul->ReadRegister(UC_X86_REG_ESP, (DWORD_PTR *)&salityEp);
-			m_emul->ReadMemory((DWORD_PTR)salityEp, &salityEp, sizeof(salityEp));
-			BYTE * sality = new BYTE[0x100];
-			if (sality)
+			if (m_dwOepCodeSize > 1)
 			{
-				m_emul->ReadMemory((DWORD_PTR)salityEp, sality, 0x100);
-				detected = TRUE;
-
-				static unsigned char signature1[] = {
-					0xE8, 0x00, 0x00, 0x00, 0x00, 0x5D, 0x8B, 0xC5,
-					0x81, 0xED, 0x05, 0x10, 0x40, 0x00, 0x8A, 0x9D,
-					0x73, 0x27, 0x40, 0x00, 0x84, 0xDB, 0x74, 0x13,
-					0x81, 0xC4 };
-				detected &= memcmp(sality, signature1, sizeof(signature1)) == 0;
-
-				if (detected)
+				// original code Found!
+				m_OepCode = new BYTE[m_dwOepCodeSize];
+				if (m_OepCode)
 				{
-					static unsigned char signature2[] = {
-										0x89, 0x85, 0x54, 0x12, 0x40, 0x00, 0xEB, 0x19,
-										0xC7, 0x85, 0x4D, 0x14, 0x40, 0x00, 0x22, 0x22,
-										0x22, 0x22, 0xC7, 0x85, 0x3A, 0x14, 0x40, 0x00,
-										0x33, 0x33, 0x33, 0x33, 0xE9, 0x82, 0x00, 0x00,
-										0x00, 0x33, 0xDB, 0x64, 0x67, 0x8B, 0x1E, 0x30,
-										0x00, 0x85, 0xDB, 0x78, 0x0E, 0x8B, 0x5B, 0x0C };
-					detected &= memcmp(sality + 0x23, signature2, sizeof(signature2)) == 0;
-
-					if (detected)
+					m_salityEp = salityEp;
+					if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1778, m_OepCode, m_dwOepCodeSize)))
 					{
-						m_scanResult.scanResult = VirusDetected;
-
-						if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1F, &m_OepAddr, sizeof(DWORD))))
-						{
-							m_OepAddr = salityEp + 5 - m_OepAddr;
-							unsigned char bRestoreOepCode = 0;
-
-							if (SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1773, &bRestoreOepCode, sizeof(bRestoreOepCode))) &&
-								bRestoreOepCode &&
-								SUCCEEDED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1774, &m_dwOepCodeSize, sizeof(m_dwOepCodeSize))))
-							{
-								m_OepCode = new BYTE[m_dwOepCodeSize];
-								if (m_OepCode)
-								{
-									m_salityEp = salityEp;
-									if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp + 0x1778, m_OepCode, m_dwOepCodeSize)))
-									{
-										delete[] m_OepCode;
-										m_OepCode = NULL;
-										m_dwOepCodeSize = 0;
-									}
-								}
-							}
-						}
-						m_emul->StopEmulator();
+						delete[] m_OepCode;
+						m_OepCode = NULL;
+						m_dwOepCodeSize = 0;
 					}
 				}
-				delete[] sality;
 			}
 		}
 	}
+	m_emul->StopEmulator();
+	delete[] sality;
+}
+
+BOOL CKillVirus::VerifySignature(__in_bcount(size) LPBYTE buffer, __in DWORD const size)
+{
+	static unsigned char signature1[] = {
+		0xE8, 0x00, 0x00, 0x00, 0x00, 0x5D, 0x8B, 0xC5,
+		0x81, 0xED, 0x05, 0x10, 0x40, 0x00, 0x8A, 0x9D,
+		0x73, 0x27, 0x40, 0x00, 0x84, 0xDB, 0x74, 0x13,
+		0x81, 0xC4 };
+	if (memcmp(buffer, signature1, sizeof(signature1))) return FALSE;
+
+	static unsigned char signature2[] = {
+		0x89, 0x85, 0x54, 0x12, 0x40, 0x00, 0xEB, 0x19,
+		0xC7, 0x85, 0x4D, 0x14, 0x40, 0x00, 0x22, 0x22,
+		0x22, 0x22, 0xC7, 0x85, 0x3A, 0x14, 0x40, 0x00,
+		0x33, 0x33, 0x33, 0x33, 0xE9, 0x82, 0x00, 0x00,
+		0x00, 0x33, 0xDB, 0x64, 0x67, 0x8B, 0x1E, 0x30,
+		0x00, 0x85, 0xDB, 0x78, 0x0E, 0x8B, 0x5B, 0x0C };
+	if (memcmp(buffer + 0x23, signature2, sizeof(signature2))) return FALSE;
+
+	return TRUE;
 }
 
 void CKillVirus::HookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data)

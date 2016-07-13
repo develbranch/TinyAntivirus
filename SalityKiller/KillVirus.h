@@ -52,8 +52,9 @@ protected:
 	virtual void WINAPI OnError(__in DWORD const dwErrorCode) override;
 	virtual HRESULT WINAPI OnEmulatorStopped(void) override;
 
-protected:
 	virtual void OnHookCode(uint64_t address, uint32_t size);
+	//
+	virtual BOOL VerifySignature(__in_bcount(size) LPBYTE buffer, __in DWORD const size);
 
 private:
 	static void HookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data);
