@@ -34,13 +34,14 @@ void Usage(void)
 
 void PrintWelcome()
 {
-	puts("------------------------------------------------------");
+	puts("--------------------------------------------------------------------------");
 	puts("TinyAntivirus version 0.1");
 	puts("Copyright (C) 2016, Quang Nguyen. All rights reserved.");
 	puts("TinyAntivirus comes with ABSOLUTELY NO WARRANTY");
-	puts("This is free software, and you are welcome to redistribute\n it under certain conditions");
+	puts("This is free software, and you are welcome to redistribute it under ");
+	puts("certain conditions.");
 	puts("Website: http://develbranch.com");
-	puts("------------------------------------------------------");
+	puts("--------------------------------------------------------------------------");
 }
 
 int wmain(int argc, wchar_t* argv[])
