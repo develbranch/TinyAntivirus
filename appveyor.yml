@@ -1,0 +1,56 @@
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+# version format
+version: 0.1.{build}-{branch}
+
+# Do not build on tags (GitHub and BitBucket)
+skip_tags: true
+
+# Including commits with particular message or from specific user
+only_commits:
+  message: /build/                # Start a new build if message contains 'build'
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image: Visual Studio 2015
+
+# scripts that are called at very beginning, before repo cloning
+init:
+  - git config --global core.autocrlf input
+
+# clone directory
+clone_folder: c:\projects\TinyAntivirus
+
+# environment variables
+environment:
+  SAMPLE_DIR: c:\projects\TinyAntivirus\tests\samples
+  PLATFORM: x86
+  CONFIGURATION: Release
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+# scripts to run before build
+before_build:
+  - cmd: git submodule update --init --recursive
+
+# run custom scripts instead of automatic MSBuild
+build_script:
+  - cmd: ci\windows\build_appveyor.bat %PLATFORM% %CONFIGURATION%
+
+#---------------------------------#
+#       tests configuration       #
+#---------------------------------#
+
+# run custom scripts instead of automatic tests
+test_script:
+  - cmd: ci\windows\test_appveyor.bat %PLATFORM% %CONFIGURATION%
+
+  
+deploy: off
