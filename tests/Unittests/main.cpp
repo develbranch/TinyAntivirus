@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #ifdef _DEBUG
 #pragma comment(lib, "gtestd.lib" )
+#else
+#pragma comment(lib, "gtest.lib" )
 #endif // _DEBUG
 
 #pragma comment(lib, "TinyAvCore.lib" )

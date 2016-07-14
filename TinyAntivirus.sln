@@ -1,15 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyAvCore", "TinyAvCore\TinyAvCore.vcxproj", "{6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyAvConsole", "TinyAvConsole\TinyAvConsole.vcxproj", "{63FACD86-7D04-4F8F-BC85-FECB879E8389}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3} = {6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SalityKiller", "SalityKiller\SalityKiller.vcxproj", "{29F78C28-341C-4D6F-BE65-2CD559672A56}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3} = {6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Unittests", "tests\Unittests\Unittests.vcxproj", "{39BBD212-79B1-4527-8D62-194A6A8428A8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3} = {6A881F9E-4BC9-4F5B-A5DD-20626F66F5E3}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
