@@ -1,6 +1,8 @@
 TinyAntivirus
 ==============
 
+[![Build status](https://ci.appveyor.com/api/projects/status/github/develbranch/TinyAntivirus?branch=master&svg=true)](https://ci.appveyor.com/project/quangnh89/TinyAntivirus/branch/master)
+
 **TinyAntivirus (TinyAv)** is an open source antivirus engine designed for detecting polymorphic virus and disinfecting it. Now, TinyAv can detect and disinfect Sality polymorphic virus. In the future, I will deveplop some modules for removing other polymorphic viruses, such as Virut or Polip.
 
 
