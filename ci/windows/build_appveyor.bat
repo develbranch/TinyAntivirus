@@ -32,5 +32,4 @@ call "%PROGRAMFILES(X86)%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %1
 
 :: build all projects
 :Build
-msbuild libs\googletest\googletest\build\gtest.sln /p:Configuration="%2" 
 msbuild TinyAntivirus.sln /p:Configuration="%2" /p:Platform="%1"
