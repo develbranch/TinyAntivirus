@@ -200,10 +200,10 @@
     <ClCompile Include="Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\libs\include\zlib\ioapi.c">
+    <ClCompile Include="..\libs\zlib\contrib\minizip\unzip.c">
       <Filter>Source Files\FileSystem\zip</Filter>
     </ClCompile>
-    <ClCompile Include="..\libs\include\zlib\unzip.c">
+    <ClCompile Include="..\libs\zlib\contrib\minizip\ioapi.c">
       <Filter>Source Files\FileSystem\zip</Filter>
     </ClCompile>
   </ItemGroup>

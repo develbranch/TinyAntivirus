@@ -5,7 +5,7 @@ extern "C"
 {
 #endif // __cplusplus
 
-#include <zlib/unzip.h>
+#include <unzip.h>
 #ifdef __cplusplus
 }
 #endif // __cplusplus

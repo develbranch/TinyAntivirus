@@ -1,8 +1,8 @@
 #pragma once
 #include <TinyAvCore.h>
-#include <zlib/ioapi.h>
+#include <ioapi.h>
 
-voidpf ZCALLBACK UHOpen  (voidpf opaque, const void* filename, int mode);
+voidpf ZCALLBACK UHOpen  (voidpf opaque, const char* filename, int mode);
 voidpf ZCALLBACK UHOpen64(voidpf opaque, const void* filename, int mode);
 uLong  ZCALLBACK UHRead  (voidpf opaque, voidpf stream, void* buf, uLong size);
 uLong  ZCALLBACK UHWrite (voidpf opaque, voidpf stream, const void* buf, uLong size);

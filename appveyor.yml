@@ -29,8 +29,9 @@ clone_folder: c:\projects\TinyAntivirus
 # environment variables
 environment:
   SAMPLE_DIR: c:\projects\TinyAntivirus\tests\samples
-  PLATFORM: x86
   CONFIGURATION: Release
+  PLATFORM: x86
+
 
 #---------------------------------#
 #       build configuration       #
