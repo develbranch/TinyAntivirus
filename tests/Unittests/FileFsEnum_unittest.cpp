@@ -88,6 +88,7 @@ TEST(FileFsEnum, All)
 	ASSERT_HRESULT_SUCCEEDED(enumObj->AddObserver(testObj));
 	ASSERT_HRESULT_SUCCEEDED(enumObj->AddArchiver(zip));
 	ASSERT_HRESULT_SUCCEEDED(enumObj->Enum(enumContext));
+	ASSERT_EQ(6, testObj->GetFileCount());
 	printf("\n\n Count = %d\n", testObj->GetFileCount());
 	ASSERT_HRESULT_SUCCEEDED(enumObj->RemoveArchiver(zip));
 	ASSERT_HRESULT_SUCCEEDED(enumObj->RemoveObserver(testObj));

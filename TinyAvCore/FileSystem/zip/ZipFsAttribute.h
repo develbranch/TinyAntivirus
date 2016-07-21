@@ -1,6 +1,6 @@
 #pragma once
 #include "../FileFsAttribute.h"
-#include <zlib/unzip.h>
+#include <unzip.h>
 
 class CZipFsAttribute :
 	public CFileFsAttribute

@@ -1,6 +1,6 @@
 #pragma once
 #include "../FileFsEnum.h"
-#include <zlib/ioapi.h>
+#include <ioapi.h>
 
 class CZipFsEnum :
 	public CFileFsEnum

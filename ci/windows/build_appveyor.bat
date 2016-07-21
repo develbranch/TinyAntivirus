@@ -13,12 +13,22 @@ if "%2" == "" (
 	exit /b 1
 )
 
+set generator=Visual Studio 14 2015
+if "%1" == "x64" (set generator=%generator% Win64)
+
 :: build googletest library
 md libs\googletest\googletest\build
 pushd libs\googletest\googletest\build
-set generator=Visual Studio 14 2015
-if "%1" == "x64" (set generator=%generator% Win64)
 cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" ..
+cmake --build . --config "%2"
+popd
+
+:: build zlib library
+md libs\zlib\build
+pushd libs\zlib\build
+set ZLIB_C_FLAGS=
+if "%2" == "Release" (set ZLIB_C_FLAGS=/MT)
+cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" -DCMAKE_C_FLAGS_RELEASE="%ZLIB_C_FLAGS%" ..
 cmake --build . --config "%2"
 popd
 
