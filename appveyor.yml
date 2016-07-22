@@ -30,7 +30,10 @@ clone_folder: c:\projects\TinyAntivirus
 environment:
   SAMPLE_DIR: c:\projects\TinyAntivirus\tests\samples
   CONFIGURATION: Release
-  PLATFORM: x86
+  matrix:
+  - PLATFORM: x86
+  
+  - PLATFORM: x64
 
 
 #---------------------------------#
