@@ -130,6 +130,7 @@ HRESULT WINAPI CPeEmulator::EmulateCode(
 		}
 
 		// map memory for this emulation
+		nSizeOfCode = CPeFileParser::SectionAlign(nSizeOfCode, 0x1000);
 		err = uc_mem_map(m_engine, memoryMappedAddr, nSizeOfCode, UC_PROT_ALL);
 		if (err != UC_ERR_OK)
 		{
@@ -139,7 +140,7 @@ HRESULT WINAPI CPeEmulator::EmulateCode(
 			return E_FAIL;
 		}
 
-		err = uc_mem_map(m_engine, memoryMappedAddr - nSizeOfStackReserve, nSizeOfStackCommit, UC_PROT_READ | UC_PROT_WRITE);
+		err = uc_mem_map(m_engine, memoryMappedAddr + nSizeOfCode, nSizeOfStackReserve, UC_PROT_READ | UC_PROT_WRITE);
 		if (err != UC_ERR_OK)
 		{
 			OnStopped();
@@ -148,7 +149,7 @@ HRESULT WINAPI CPeEmulator::EmulateCode(
 			return E_FAIL;
 		}
 
-		DWORD r_esp = (DWORD)memoryMappedAddr - nSizeOfStackReserve + nSizeOfStackCommit;
+		DWORD r_esp = (DWORD)memoryMappedAddr + nSizeOfCode + nSizeOfStackCommit;
 		err = uc_reg_write(m_engine, UC_X86_REG_ESP, &r_esp);
 		if (err != UC_ERR_OK)
 		{
@@ -262,15 +263,15 @@ HRESULT WINAPI CPeEmulator::EmulatePeFile(__in IPeFile *peFile, __in DWORD_PTR r
 			hr = E_FAIL;
 			goto Exit;
 		}
-
-		err = uc_mem_map(m_engine, ntHeader.OptionalHeader.ImageBase - ntHeader.OptionalHeader.SizeOfStackReserve, ntHeader.OptionalHeader.SizeOfStackCommit, UC_PROT_READ | UC_PROT_WRITE);
+		DWORD SizeOfImage = CPeFileParser::SectionAlign(ntHeader.OptionalHeader.SizeOfImage, ntHeader.OptionalHeader.SectionAlignment);
+		err = uc_mem_map(m_engine, ntHeader.OptionalHeader.ImageBase + SizeOfImage, ntHeader.OptionalHeader.SizeOfStackReserve, UC_PROT_READ | UC_PROT_WRITE);
 		if (err != UC_ERR_OK)
 		{
 			hr = E_FAIL;
 			goto Exit;
 		}
 
-		DWORD r_esp = (DWORD)ntHeader.OptionalHeader.ImageBase - ntHeader.OptionalHeader.SizeOfStackReserve + ntHeader.OptionalHeader.SizeOfStackCommit;
+		DWORD r_esp = (DWORD)ntHeader.OptionalHeader.ImageBase + SizeOfImage + ntHeader.OptionalHeader.SizeOfStackCommit;
 		err = uc_reg_write(m_engine, UC_X86_REG_ESP, &r_esp);
 		if (err != UC_ERR_OK)
 		{
