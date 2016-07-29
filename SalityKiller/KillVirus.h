@@ -54,7 +54,7 @@ protected:
 
 	virtual void OnHookCode(uint64_t address, uint32_t size);
 	//
-	virtual BOOL VerifySignature(__in_bcount(size) LPBYTE buffer, __in DWORD const size);
+	virtual BOOL VerifySignature( __in uint32_t salityEp );
 
 private:
 	static void HookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data);

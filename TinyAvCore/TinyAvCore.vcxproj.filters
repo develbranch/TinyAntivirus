@@ -150,6 +150,9 @@
     <ClInclude Include="..\include\FileSystem\FsObject.h">
       <Filter>Header Files\FileSystem</Filter>
     </ClInclude>
+    <ClInclude Include="kmp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Emulator\PeEmulator.cpp">
@@ -205,6 +208,9 @@
     </ClCompile>
     <ClCompile Include="..\libs\zlib\contrib\minizip\ioapi.c">
       <Filter>Source Files\FileSystem\zip</Filter>
+    </ClCompile>
+    <ClCompile Include="kmp.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

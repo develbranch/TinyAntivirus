@@ -324,6 +324,18 @@ uc_err uc_mem_unmap(uc_engine *uc, uint64_t address, size_t size)
 
 uc_err uc_mem_protect(uc_engine *uc, uint64_t address, size_t size, uint32_t perms)
 {
+	if (gp_uc_mem_protect == NULL)
+	{
+		if (UC_MAKE_VERSION(UC_API_MAJOR, UC_API_MINOR) == uc_version(NULL, NULL))
+		{
+			return UC_ERR_OK;
+		}
+		else
+		{
+			return UC_ERR_VERSION;
+		}
+	}
+	
     return gp_uc_mem_protect(uc, address, size, perms);
 }
 

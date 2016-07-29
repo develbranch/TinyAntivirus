@@ -50,6 +50,7 @@
     <ClInclude Include="FileSystem\zip\ZipFsAttribute.h" />
     <ClInclude Include="FileSystem\zip\ZipFsEnum.h" />
     <ClInclude Include="FileType\PeFileParser.h" />
+    <ClInclude Include="kmp.h" />
     <ClInclude Include="Module\ModuleMgrService.h" />
     <ClInclude Include="Scanner\ScanService.h" />
     <ClInclude Include="Utils.h" />
@@ -80,6 +81,7 @@
     <ClCompile Include="FileSystem\zip\ZipFsAttribute.cpp" />
     <ClCompile Include="FileSystem\zip\ZipFsEnum.cpp" />
     <ClCompile Include="FileType\PeFileParser.cpp" />
+    <ClCompile Include="kmp.cpp" />
     <ClCompile Include="Module\ModuleMgrService.cpp" />
     <ClCompile Include="Scanner\ScanService.cpp" />
     <ClCompile Include="Utils.cpp" />

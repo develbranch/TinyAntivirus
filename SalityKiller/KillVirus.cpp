@@ -122,13 +122,27 @@ HRESULT WINAPI CKillVirus::Scan(__in IVirtualFs * file, __in IFsEnumContext * co
 	m_scanResult.scanResult = NoVirus;
 	m_scanResult.cleanResult = DonotClean;
 
-	// notify observer before scanning file
+	// notify observer before scanning a file
 	hr = observer->OnPreScan(file, context);
 	if (FAILED(hr)) return hr; // failed --> return
 
 	// check for PE file type
 	hr = m_parser->CheckType(file, &isMatched);
 	if (FAILED(hr) || isMatched == FALSE) return hr; // not PE file or malformed 
+
+	// check header of file
+	IMAGE_NT_HEADERS32 peHeader;
+	hr = m_parser->GetPEHeader(&peHeader);
+	if (FAILED(hr)) goto Exit;
+	// do not scan dll files
+	if (TEST_FLAG(peHeader.OptionalHeader.DllCharacteristics, IMAGE_FILE_DLL))
+		goto Exit;
+
+	// do not scan driver images
+// 	if (peHeader.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress && peHeader.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size)
+// 	{
+//		If it imports from "ntoskrnl.exe" or other kernel components it should be a driver
+// 	}
 
 	m_emulErrCode = 0;
 	// emulate code from entry point to end of section
@@ -297,15 +311,9 @@ void CKillVirus::OnHookCode(uint64_t address, uint32_t size)
 		)
 		return;
 
-	BYTE * sality = new BYTE[0x100];
-	if (sality == NULL) return;
-
 	// check sality code
-	if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp, sality, 0x100)) ||
-		!VerifySignature(sality, 0x100)
-		)
+	if ( !VerifySignature(salityEp) )
 	{
-		delete[] sality;
 		return;
 	}
 
@@ -340,27 +348,82 @@ void CKillVirus::OnHookCode(uint64_t address, uint32_t size)
 		}
 	}
 	m_emul->StopEmulator();
-	delete[] sality;
 }
 
-BOOL CKillVirus::VerifySignature(__in_bcount(size) LPBYTE buffer, __in DWORD const size)
+BOOL CKillVirus::VerifySignature(__in uint32_t salityEp)
 {
+	int i = 0;
+	
+	static unsigned char signature0[] = {
+		0xE8, 0x00, 0x00, 0x00, 0x00, 0x5D, 
+	};
+	unsigned char sality1[sizeof(signature0)];
+
+
+	if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp, sality1, sizeof(signature0))))
+		return FALSE;
+
+	if (memcmp(sality1, signature0, sizeof(signature0))) return FALSE;
+
+	size_t codeSize = 0x200;
+	unsigned char * sality = new unsigned char[codeSize];
+	if (FAILED(m_emul->ReadMemory((DWORD_PTR)salityEp, sality, (DWORD)codeSize)))
+	{
+		delete[] sality;
+		return FALSE;
+	}
+
 	static unsigned char signature1[] = {
-		0xE8, 0x00, 0x00, 0x00, 0x00, 0x5D, 0x8B, 0xC5,
-		0x81, 0xED, 0x05, 0x10, 0x40, 0x00, 0x8A, 0x9D,
-		0x73, 0x27, 0x40, 0x00, 0x84, 0xDB, 0x74, 0x13,
-		0x81, 0xC4 };
-	if (memcmp(buffer, signature1, sizeof(signature1))) return FALSE;
+		0x81, 0xED, 0x05, 0x10, 0x40, 0x00,
+	};
+
+	i = Kmp(sality, codeSize, signature1, sizeof(signature1));
+	if (i == -1 || i > 0x20)
+	{
+		delete[] sality;
+		return FALSE;
+	}
+
 
 	static unsigned char signature2[] = {
-		0x89, 0x85, 0x54, 0x12, 0x40, 0x00, 0xEB, 0x19,
-		0xC7, 0x85, 0x4D, 0x14, 0x40, 0x00, 0x22, 0x22,
-		0x22, 0x22, 0xC7, 0x85, 0x3A, 0x14, 0x40, 0x00,
-		0x33, 0x33, 0x33, 0x33, 0xE9, 0x82, 0x00, 0x00,
-		0x00, 0x33, 0xDB, 0x64, 0x67, 0x8B, 0x1E, 0x30,
-		0x00, 0x85, 0xDB, 0x78, 0x0E, 0x8B, 0x5B, 0x0C };
-	if (memcmp(buffer + 0x23, signature2, sizeof(signature2))) return FALSE;
+		0x8B, 0x5B, 0x0C, 0x8B, 0x5B, 0x1C, 0x8B, 0x1B,
+		0x8B, 0x5B, 0x08, 0xF8, 0xEB, 0x0A, 0x8B, 0x5B,
+		0x34, 0x8D, 0x5B, 0x7C, 0x8B, 0x5B, 0x3C, 0xF8,
+		0x66, 0x81, 0x3B, 0x4D, 0x5A
+	};
+	
+	 
+	i = Kmp(sality, codeSize, signature2, sizeof(signature2));
+	if (i == -1 || i > 0x100) 
+	{
+		delete[] sality;
+		return FALSE;
+	}
 
+
+	static unsigned char signature3[] = {
+		0x57, 0x68, 0x00, 0x80, 0x00, 0x00, 0x33, 0xC0, 0x50, 0x6A, 0x04, 0x50, 0x48, 0x50, 0xff, 0x95
+	};
+
+	i = Kmp(sality, codeSize, signature3, sizeof(signature3));
+	if (i == -1 || i > 0x150)
+	{
+		delete[] sality;
+		return FALSE;
+	}
+
+	unsigned char signature4[14] = {
+		0x68, 0x00, 0x54, 0x01, 0x00, 0x6A, 0x00, 0x6A, 0x00, 0x6A, 0x06, 0x50, 0xFF, 0x95
+	};
+
+
+	i = Kmp(sality, codeSize, signature4, sizeof(signature4));
+	if (i == -1 || i > 0x200 || i < 0x100)
+	{
+		delete[] sality;
+		return FALSE;
+	}
+	delete[] sality;
 	return TRUE;
 }
 

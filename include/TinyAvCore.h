@@ -9,6 +9,7 @@
 #include "FileSystem/FsObject.h"
 #include "FileSystem/FsEnum.h"
 #include <unicorn/unicorn.h>
+#include "../TinyAvCore/Utils.h"
 
 #ifdef __cplusplus
 extern "C"

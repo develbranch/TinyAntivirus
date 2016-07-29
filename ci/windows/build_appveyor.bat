@@ -19,7 +19,12 @@ if /I "%1" == "x64" (set generator=%generator% Win64)
 :: build googletest library
 md libs\googletest\googletest\build
 pushd libs\googletest\googletest\build
+
+if /I "%2" == "Debug" (
+cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" -DBUILD_SHARED_LIBS=ON ..
+) ELSE (
 cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" ..
+)
 cmake --build . --config "%2"
 popd
 
