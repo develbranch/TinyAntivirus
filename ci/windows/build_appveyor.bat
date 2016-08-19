@@ -17,18 +17,24 @@ set generator=Visual Studio 14 2015
 if /I "%1" == "x64" (set generator=%generator% Win64)
 
 :: build googletest library
-md libs\googletest\googletest\build
-pushd libs\googletest\googletest\build
-cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" ..
+set build_gtest_dir=libs\googletest\googletest\build
+if exist "%build_gtest_dir%" (
+    del /S /Q "%build_gtest_dir%"
+) 
+md "%build_gtest_dir%"
+pushd "%build_gtest_dir%"
+cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" -DCMAKE_C_FLAGS_RELEASE="/MT" -DCMAKE_C_FLAGS_DEBUG="/MTd" ..
 cmake --build . --config "%2"
 popd
 
 :: build zlib library
-md libs\zlib\build
-pushd libs\zlib\build
-set ZLIB_C_FLAGS=
-if /I "%2" == "Release" (set ZLIB_C_FLAGS=/MT)
-cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" -DCMAKE_C_FLAGS_RELEASE="%ZLIB_C_FLAGS%" ..
+set build_zlib_dir=libs\zlib\build
+if exist "%build_zlib_dir%" (
+    del /S /Q "%build_zlib_dir%"
+) 
+md "%build_zlib_dir%"
+pushd "%build_zlib_dir%"
+cmake -G "%generator%" -DCMAKE_CONFIGURATION_TYPES="%2" -DCMAKE_C_FLAGS_RELEASE="/MT" -DCMAKE_C_FLAGS_DEBUG="/MTd" ..
 cmake --build . --config "%2"
 popd
 
